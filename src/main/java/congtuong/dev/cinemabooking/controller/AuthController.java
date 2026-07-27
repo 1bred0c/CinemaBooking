@@ -1,0 +1,50 @@
+package congtuong.dev.cinemabooking.controller;
+
+import congtuong.dev.cinemabooking.dto.request.LoginRequest;
+import congtuong.dev.cinemabooking.dto.request.LogoutRequest;
+import congtuong.dev.cinemabooking.dto.request.RefreshTokenRequest;
+import congtuong.dev.cinemabooking.dto.request.RegisterRequest;
+import congtuong.dev.cinemabooking.dto.response.LoginResponse;
+import congtuong.dev.cinemabooking.dto.response.RefreshTokenResponse;
+import congtuong.dev.cinemabooking.dto.response.UserRespone;
+import congtuong.dev.cinemabooking.security.jwt.AuthService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/api/v1/auth")
+@RequiredArgsConstructor
+public class AuthController {
+
+    private final AuthService authService;
+
+    @PostMapping("/register")
+    public ResponseEntity<UserRespone> register (@Valid @RequestBody RegisterRequest request){
+        UserRespone userRespone = authService.register(request);
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(userRespone);
+    }
+
+    @PostMapping("/refresh-token")
+    public ResponseEntity<RefreshTokenResponse> refreshToken (@Valid @RequestBody RefreshTokenRequest request){
+        RefreshTokenResponse response = authService.refreshToken(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout (@Valid @RequestBody LogoutRequest request){
+        authService.logout(request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<LoginResponse> login (@Valid @RequestBody LoginRequest request){
+        LoginResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
+    }
+
+}

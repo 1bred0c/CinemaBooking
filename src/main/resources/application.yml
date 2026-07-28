@@ -23,3 +23,6 @@ security:
     secret: ${JWT_SECRET}
     access-token-expiration: 15m
     refresh-token-expiration: 14d
+
+booking:
+  seat-hold-duration-minutes: ${SEAT_HOLD_DURATION_MINUTES:10}

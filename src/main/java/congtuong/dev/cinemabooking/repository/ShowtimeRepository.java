@@ -8,9 +8,12 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface ShowtimeRepository extends JpaRepository<ShowTime, UUID> {
+
+    Optional<ShowTime> findByIdAndActiveTrue(UUID id);
 
     @Query("""
             select s from ShowTime s
@@ -43,6 +46,24 @@ public interface ShowtimeRepository extends JpaRepository<ShowTime, UUID> {
           AND st.endTime > :newStartTime
         """)
     boolean existsOverlappingShowtime(
+            @Param("roomId") UUID roomId,
+            @Param("newStartTime") LocalDateTime newStartTime,
+            @Param("newEndTime") LocalDateTime newEndTime,
+            @Param("CANCELLED") ShowtimeStatus cancelledStatus
+    );
+
+    @Query("""
+        SELECT CASE WHEN COUNT(st) > 0 THEN true ELSE false END
+        FROM ShowTime st
+        WHERE st.id <> :showtimeId
+          AND st.room.id = :roomId
+          AND st.active = true
+          AND st.status <> :CANCELLED
+          AND st.startTime < :newEndTime
+          AND st.endTime > :newStartTime
+        """)
+    boolean existsOverlappingShowtimeExcludingId(
+            @Param("showtimeId") UUID showtimeId,
             @Param("roomId") UUID roomId,
             @Param("newStartTime") LocalDateTime newStartTime,
             @Param("newEndTime") LocalDateTime newEndTime,

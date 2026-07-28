@@ -101,10 +101,13 @@ public class ShowtimeServiceImpl implements ShowtimeService {
             showtime.setRoom(findActiveRoom(request.roomId()));
         }
         if (request.startTime() != null) {
+            validateStartTime(request.startTime());
             showtime.setStartTime(request.startTime());
         }
-        if (request.endTime() != null) {
-            showtime.setEndTime(request.endTime());
+        if (request.movieId() != null || request.startTime() != null) {
+            showtime.setEndTime(
+                    showtime.getStartTime().plusMinutes(showtime.getMovie().getDurationMinutes())
+            );
         }
         if (request.basePrice() != null) {
             validateBasePrice(request.basePrice());
@@ -115,9 +118,21 @@ public class ShowtimeServiceImpl implements ShowtimeService {
         }
 
         validateActiveMovie(showtime.getMovie());
-        validateActiveRoom(showtime.getRoom());
-        // TODO: Implement room schedule overlap validation
-        // TODO: Calculate endTime from movie duration
+        showtime.setRoom(findActiveRoomForUpdate(showtime.getRoom().getId()));
+
+        boolean hasConflict =
+                showtimeRepository.existsOverlappingShowtimeExcludingId(
+                        showtime.getId(),
+                        showtime.getRoom().getId(),
+                        showtime.getStartTime(),
+                        showtime.getEndTime(),
+                        ShowtimeStatus.CANCELLED
+                );
+        if (hasConflict) {
+            throw new ShowtimeException("Room is already booked for the selected time.");
+        }
+
+
         return toResponse(showtime);
     }
 

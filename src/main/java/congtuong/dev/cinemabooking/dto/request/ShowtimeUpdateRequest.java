@@ -11,7 +11,6 @@ public record ShowtimeUpdateRequest(
         UUID movieId,
         UUID roomId,
         LocalDateTime startTime,
-        LocalDateTime endTime,
         @Positive BigDecimal basePrice,
         ShowtimeStatus status
 ) {

@@ -4,15 +4,11 @@ import congtuong.dev.cinemabooking.dto.request.ShowtimeCreateRequest;
 import congtuong.dev.cinemabooking.dto.request.ShowtimeFilterRequest;
 import congtuong.dev.cinemabooking.dto.request.ShowtimeUpdateRequest;
 import congtuong.dev.cinemabooking.dto.response.ShowtimeResponse;
-import congtuong.dev.cinemabooking.entity.Movie;
-import congtuong.dev.cinemabooking.entity.Room;
-import congtuong.dev.cinemabooking.entity.ShowTime;
+import congtuong.dev.cinemabooking.entity.*;
 import congtuong.dev.cinemabooking.entity.enums.RoomStatus;
 import congtuong.dev.cinemabooking.entity.enums.ShowtimeStatus;
 import congtuong.dev.cinemabooking.exception.ShowtimeException;
-import congtuong.dev.cinemabooking.repository.MovieRepository;
-import congtuong.dev.cinemabooking.repository.RoomRepository;
-import congtuong.dev.cinemabooking.repository.ShowtimeRepository;
+import congtuong.dev.cinemabooking.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
 
 @Service
@@ -29,6 +26,8 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     private final ShowtimeRepository showtimeRepository;
     private final MovieRepository movieRepository;
     private final RoomRepository roomRepository;
+    private final ShowSeatRepository showSeatRepository;
+    private final ShowSeatService showSeatService;
 
     @Override
     @Transactional
@@ -62,8 +61,7 @@ public class ShowtimeServiceImpl implements ShowtimeService {
                 .build();
 
         ShowTime savedShowtime = showtimeRepository.save(showtime);
-        // TODO: Generate ShowSeat after successful Showtime creation
-
+        showSeatService.generateShowSeatsForShowtime(savedShowtime.getId());
         return toResponse(savedShowtime);
     }
 
@@ -93,6 +91,14 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     @Transactional
     public ShowtimeResponse updateShowtime(UUID showtimeId, ShowtimeUpdateRequest request) {
         ShowTime showtime = findShowtime(showtimeId);
+
+        if (request.roomId() != null
+                && !Objects.equals(request.roomId(), showtime.getRoom().getId())
+                && showSeatRepository.existsByShowtimeId(showtimeId)) {
+            throw new ShowtimeException(
+                    "Cannot change room after show seats have been generated"
+            );
+        }
 
         if (request.movieId() != null) {
             showtime.setMovie(findActiveMovie(request.movieId()));

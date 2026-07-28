@@ -24,6 +24,10 @@ public class User {
     @Column(name = "phone_number", nullable = false, unique = true)
     private String phoneNumber;
 
+    // Kept nullable for backward compatibility with users created before email was added.
+    @Column(name = "email", unique = true)
+    private String email;
+
     @Column(name = "password", nullable = true)
     private String password;
 

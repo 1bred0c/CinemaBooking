@@ -1,5 +1,6 @@
 package congtuong.dev.cinemabooking.dto.request;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Past;
 import jakarta.validation.constraints.Pattern;
@@ -15,6 +16,10 @@ public record RegisterRequest(
              message = "Phone number must contains 10 digits and start with 0"
      )
      String phoneNumber,
+
+     @NotBlank(message = "Email is required")
+     @Email(message = "Email must be valid")
+     String email,
 
      @NotBlank(message = "Password is required")
      @Size(min = 6, max = 20, message = "Password must contains between 6 to 20 characters")

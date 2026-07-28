@@ -21,8 +21,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.Timestamp;
-import java.time.LocalDateTime;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -38,11 +37,14 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     public UserRespone register(RegisterRequest registerRequest) {
         String phoneNumber = registerRequest.phoneNumber();
+        String email = registerRequest.email().trim().toLowerCase(Locale.ROOT);
         if (userRepository.existsByPhoneNumber(phoneNumber))
             throw new UserAlreadyExistException("Phone number is already exist");
-        Timestamp now = Timestamp.valueOf(LocalDateTime.now());
+        if (userRepository.existsByEmailIgnoreCase(email))
+            throw new UserAlreadyExistException("Email already exists");
         User newUser = User.builder()
                 .phoneNumber(phoneNumber)
+                .email(email)
                 .fullname(registerRequest.fullname())
                 .password(passwordEncoder.encode(registerRequest.password()))
                 .birthDate(registerRequest.birthdate())
@@ -56,11 +58,12 @@ public class AuthServiceImpl implements AuthService {
             return new UserRespone(
                     savedUser.getId(),
                     savedUser.getPhoneNumber(),
+                    savedUser.getEmail(),
                     savedUser.getFullname(),
                     savedUser.getRole()
             );
         } catch (DataIntegrityViolationException exception){
-            throw new UserAlreadyExistException("Phone number is already exist");
+            throw new UserAlreadyExistException("Phone number or email already exists");
         }
     }
 

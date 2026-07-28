@@ -3,7 +3,7 @@
 A REST API for managing cinemas, rooms, physical seats, movies, genres, and
 showtimes. The project demonstrates a layered Spring Boot architecture, JWT
 authentication, role-based authorization, validation, soft deletion, and
-concurrency-aware showtime scheduling.
+concurrency-aware showtime scheduling and seat holding.
 
 ## Technology
 
@@ -37,9 +37,32 @@ API input and output use DTOs; controllers do not return JPA entities.
 - Movie CRUD
 - Genre CRUD and Movie–Genre assignment
 - Showtime CRUD and filtering
+- Showtime seat generation and pricing
+- Temporary seat holds with concurrency-safe creation and cancellation
 
 Administrative write endpoints require the `ADMIN` role. Read endpoints require
 an authenticated user.
+
+## Conceptual domain model
+
+![CinemaBooking conceptual ERD](docs/cinema-booking-concept-erd.jpg)
+
+The diagram is intentionally conceptual: it highlights domain entities and their
+relationships without listing database columns, foreign keys, enum values, or
+implementation-specific join tables.
+
+Key concepts:
+
+- A Cinema contains Rooms, and each Room contains its physical Seats.
+- Movies and Rooms are connected through Showtimes.
+- Movies can belong to multiple Genres.
+- A ShowSeat represents one physical Seat for one Showtime, with
+  screening-specific availability and pricing.
+- A ShowSeatHold temporarily reserves ShowSeats for a User through
+  ShowSeatHoldItems.
+- A Booking belongs to a User and a Showtime, while BookingSeats identify its
+  selected ShowSeats.
+- A Payment records the payment associated with a Booking.
 
 ## Local setup
 
@@ -57,6 +80,7 @@ DB_URL=jdbc:postgresql://localhost:5432/cinema_booking
 DB_USERNAME=postgres
 DB_PASSWORD=your-password
 JWT_SECRET=your-random-secret-at-least-32-characters-long
+SEAT_HOLD_DURATION_MINUTES=10
 ```
 
 The local `.env` file is ignored by Git and loaded automatically by Spring Boot.
@@ -99,7 +123,8 @@ tests.
 - Deletes are soft deletes when a domain object has an active state.
 - A physical Seat does not store screening-specific availability.
 - Movie and Genre use a many-to-many join table named `movie_genre`.
-- Movie and Room are connected through ShowTime.
+- Movie and Room are connected through Showtime.
 - Showtime scheduling locks the Room row before checking for overlapping
   screenings, preventing concurrent creation for the same room from passing the
   conflict check simultaneously.
+- Seat-hold expiration remains intentionally pending for a scheduled job.

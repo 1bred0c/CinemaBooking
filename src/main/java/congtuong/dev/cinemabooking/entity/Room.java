@@ -23,14 +23,8 @@ public class Room {
     @Column(name ="name")
     private String name;
 
-    @Column(name ="total_seats")
-    private Integer totalSeats;
-
     @Column(name ="total_rows")
     private Integer totalRows;
-
-    @Column(name ="total_columns")
-    private Integer totalColumns;
 
     @Enumerated(EnumType.STRING)
     @Column(name ="room_type")

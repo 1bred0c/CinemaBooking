@@ -8,6 +8,7 @@ import congtuong.dev.cinemabooking.entity.enums.RoomStatus;
 import congtuong.dev.cinemabooking.exception.RoomException;
 import congtuong.dev.cinemabooking.repository.CinemaRepository;
 import congtuong.dev.cinemabooking.repository.RoomRepository;
+import congtuong.dev.cinemabooking.repository.SeatRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +23,7 @@ public class RoomServiceImpl implements RoomService {
 
     private final RoomRepository roomRepository;
     private final CinemaRepository cinemaRepository;
+    private final SeatRepository seatRepository;
 
     @Override
     public List<RoomResponse> findAllRooms() {
@@ -34,9 +36,7 @@ public class RoomServiceImpl implements RoomService {
         Room room = roomRepository.save(
                 Room.builder()
                 .name(roomCreateRequest.name())
-                .totalSeats(roomCreateRequest.totalSeats())
                 .totalRows(roomCreateRequest.totalRows())
-                .totalColumns(roomCreateRequest.totalColumns())
                         .cinema(cinemaRepository.findById(roomCreateRequest.cinemaId()).orElseThrow(
                                 () -> new RoomException("Cinema not found")))
                 .roomType(roomCreateRequest.roomType())
@@ -64,12 +64,6 @@ public class RoomServiceImpl implements RoomService {
         if (roomUpdateRequest.name() != null) {
             room.setName(roomUpdateRequest.name());
         }
-        if (roomUpdateRequest.totalSeats() != null) {
-            room.setTotalSeats(roomUpdateRequest.totalSeats());
-        }
-        if (roomUpdateRequest.totalColumns() != null) {
-            room.setTotalColumns(roomUpdateRequest.totalColumns());
-        }
         if (roomUpdateRequest.roomType() != null) {
             room.setRoomType(roomUpdateRequest.roomType());
         }
@@ -85,7 +79,7 @@ public class RoomServiceImpl implements RoomService {
                     () -> new RoomException("Cinema not found")
             ));
         }
-        return toRoomResponse(roomRepository.save(room));
+        return toRoomResponse(room);
     }
 
     @Override
@@ -95,16 +89,19 @@ public class RoomServiceImpl implements RoomService {
                 () -> new RoomException("Room not found")
         );
         room.setStatus(RoomStatus.INACTIVE);
-        return toRoomResponse(roomRepository.save(room));
+        return toRoomResponse(room);
     }
 
     private RoomResponse toRoomResponse(Room room){
         return new RoomResponse(
                 room.getId(),
                 room.getName(),
-                room.getTotalSeats(),
+                Math.toIntExact(
+                        seatRepository.countByRoomIdAndIsActiveTrue(
+                                room.getId()
+                        )
+                ),
                 room.getTotalRows(),
-                room.getTotalColumns(),
                 room.getRoomType(),
                 room.getStatus(),
                 room.getCinema().getId()

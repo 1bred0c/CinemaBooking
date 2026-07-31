@@ -6,6 +6,7 @@ import congtuong.dev.cinemabooking.dto.response.GenreSummaryResponse;
 import congtuong.dev.cinemabooking.dto.response.MovieResponse;
 import congtuong.dev.cinemabooking.entity.Genre;
 import congtuong.dev.cinemabooking.entity.Movie;
+import congtuong.dev.cinemabooking.entity.enums.ShowtimeStatus;
 import congtuong.dev.cinemabooking.exception.GenreException;
 import congtuong.dev.cinemabooking.exception.MovieException;
 import congtuong.dev.cinemabooking.repository.GenreRepository;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -27,6 +29,17 @@ public class MovieServiceImpl implements MovieService {
     @Override
     public List<MovieResponse> getMovies() {
         return movieRepository.findAll().stream().map(this::toResponse).toList();
+    }
+
+    @Override
+    public List<MovieResponse> getNowShowingMovies() {
+        return movieRepository.findNowShowing(
+                        ShowtimeStatus.SCHEDULED,
+                        LocalDateTime.now()
+                )
+                .stream()
+                .map(this::toResponse)
+                .toList();
     }
 
     @Override

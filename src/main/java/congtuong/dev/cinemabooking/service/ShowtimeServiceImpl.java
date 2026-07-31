@@ -4,9 +4,12 @@ import congtuong.dev.cinemabooking.dto.request.ShowtimeCreateRequest;
 import congtuong.dev.cinemabooking.dto.request.ShowtimeFilterRequest;
 import congtuong.dev.cinemabooking.dto.request.ShowtimeUpdateRequest;
 import congtuong.dev.cinemabooking.dto.response.ShowtimeResponse;
+import congtuong.dev.cinemabooking.dto.response.ShowtimeBrowseResponse;
+import congtuong.dev.cinemabooking.dto.response.ShowtimeSeatAvailability;
 import congtuong.dev.cinemabooking.entity.*;
 import congtuong.dev.cinemabooking.entity.enums.RoomStatus;
 import congtuong.dev.cinemabooking.entity.enums.ShowtimeStatus;
+import congtuong.dev.cinemabooking.entity.enums.ShowSeatStatus;
 import congtuong.dev.cinemabooking.exception.ShowtimeException;
 import congtuong.dev.cinemabooking.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -15,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.util.Map;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -84,6 +89,57 @@ public class ShowtimeServiceImpl implements ShowtimeService {
                         appliedFilter.active())
                 .stream()
                 .map(this::toResponse)
+                .toList();
+    }
+
+    @Override
+    public List<ShowtimeBrowseResponse> getBookableShowtimesByMovie(
+            UUID movieId,
+            UUID cinemaId,
+            LocalDate date
+    ) {
+        Movie movie = findActiveMovie(movieId);
+        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime startTime = date == null
+                ? now
+                : date.atStartOfDay();
+        if (startTime.isBefore(now)) {
+            startTime = now;
+        }
+        LocalDateTime endTime = date == null
+                ? null
+                : date.plusDays(1).atStartOfDay();
+        if (endTime != null && !endTime.isAfter(now)) {
+            return List.of();
+        }
+
+        List<ShowTime> showtimes = showtimeRepository.findBookableByMovie(
+                movie.getId(),
+                cinemaId,
+                startTime,
+                endTime,
+                ShowtimeStatus.SCHEDULED
+        );
+        if (showtimes.isEmpty()) {
+            return List.of();
+        }
+
+        Map<UUID, Long> availableSeats = showSeatRepository
+                .countByShowtimeIdsAndStatus(
+                        showtimes.stream().map(ShowTime::getId).toList(),
+                        ShowSeatStatus.AVAILABLE
+                )
+                .stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        ShowtimeSeatAvailability::showtimeId,
+                        ShowtimeSeatAvailability::availableSeats
+                ));
+
+        return showtimes.stream()
+                .map(showtime -> toBrowseResponse(
+                        showtime,
+                        availableSeats.getOrDefault(showtime.getId(), 0L)
+                ))
                 .toList();
     }
 
@@ -214,6 +270,29 @@ public class ShowtimeServiceImpl implements ShowtimeService {
                 showtime.isActive(),
                 showtime.getCreatedAt(),
                 showtime.getUpdatedAt()
+        );
+    }
+
+    private ShowtimeBrowseResponse toBrowseResponse(
+            ShowTime showtime,
+            long availableSeats
+    ) {
+        Room room = showtime.getRoom();
+        Cinema cinema = room.getCinema();
+        return new ShowtimeBrowseResponse(
+                showtime.getId(),
+                showtime.getMovie().getId(),
+                showtime.getMovie().getTitle(),
+                cinema.getId(),
+                cinema.getName(),
+                cinema.getAddress(),
+                room.getId(),
+                room.getName(),
+                room.getRoomType(),
+                showtime.getStartTime(),
+                showtime.getEndTime(),
+                showtime.getBasePrice(),
+                availableSeats
         );
     }
 

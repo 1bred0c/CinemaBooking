@@ -9,6 +9,7 @@ import java.util.UUID;
 
 public interface CinemaService {
     List<CinemaResponse> getCinemas();
+    List<CinemaResponse> getActiveCinemas();
     CinemaResponse getCinema(UUID id);
     CinemaResponse createCinema(CinemaCreateRequest request);
     CinemaResponse updateCinema(UUID id, CinemaUpdateRequest request);

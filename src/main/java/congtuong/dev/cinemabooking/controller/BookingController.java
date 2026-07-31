@@ -3,6 +3,8 @@ package congtuong.dev.cinemabooking.controller;
 import congtuong.dev.cinemabooking.dto.request.BookingCreateRequest;
 import congtuong.dev.cinemabooking.dto.response.BookingResponse;
 import congtuong.dev.cinemabooking.dto.response.BookingSummaryResponse;
+import congtuong.dev.cinemabooking.dto.response.MyBookingResponse;
+import congtuong.dev.cinemabooking.entity.enums.BookingStatus;
 import congtuong.dev.cinemabooking.security.jwt.CustomUserDetails;
 import congtuong.dev.cinemabooking.service.BookingService;
 import jakarta.validation.Valid;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
 import java.util.UUID;
@@ -60,6 +63,17 @@ public class BookingController {
         return ResponseEntity.ok(
                 bookingService.getUserBookings(currentUser.getUser().getId())
         );
+    }
+
+    @GetMapping("/me")
+    public ResponseEntity<List<MyBookingResponse>> getMyBookings(
+            @RequestParam(required = false) BookingStatus status,
+            @AuthenticationPrincipal CustomUserDetails currentUser
+    ) {
+        return ResponseEntity.ok(bookingService.getMyBookings(
+                currentUser.getUser().getId(),
+                status
+        ));
     }
 
     @PatchMapping("/{bookingId}/cancel")

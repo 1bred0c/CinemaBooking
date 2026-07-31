@@ -32,6 +32,22 @@ public interface ShowSeatHoldRepository extends JpaRepository<ShowSeatHold, UUID
             Instant time
     );
 
+    List<ShowSeatHold> findTop100ByStatusAndExpiresAtBeforeOrderByExpiresAtAsc(
+            ShowSeatHoldStatus status,
+            Instant time
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            select h from ShowSeatHold h
+            join fetch h.showtime
+            join fetch h.user
+            where h.id = :holdId
+            """)
+    Optional<ShowSeatHold> findByIdForUpdate(
+            @Param("holdId") UUID holdId
+    );
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             select h from ShowSeatHold h

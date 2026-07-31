@@ -40,10 +40,25 @@ public class SecurityConfig {
                 )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
-                                "/api/v1/auth/**",
+                                "/api/v1/auth/register",
+                                "/api/v1/auth/login",
+                                "/api/v1/auth/refresh-token",
+                                "/api/v1/auth/logout",
+                                "/api/v1/payments/vnpay/return",
+                                "/api/v1/payments/vnpay/ipn",
+                                "/api/v1/payments/momo/return",
+                                "/api/v1/payments/momo/ipn",
                                 "/v3/api-docs/**",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html"
+                        ).permitAll()
+
+                        .requestMatchers(
+                                HttpMethod.GET,
+                                "/api/v1/movies/**",
+                                "/api/v1/genres/**",
+                                "/api/v1/cinemas/**",
+                                "/api/v1/showtimes/**"
                         ).permitAll()
 
                         .requestMatchers(

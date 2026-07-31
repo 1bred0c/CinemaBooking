@@ -3,6 +3,7 @@ package congtuong.dev.cinemabooking.service;
 import congtuong.dev.cinemabooking.dto.request.BookingCreateRequest;
 import congtuong.dev.cinemabooking.dto.response.BookingResponse;
 import congtuong.dev.cinemabooking.dto.response.BookingSummaryResponse;
+import congtuong.dev.cinemabooking.dto.response.MyBookingResponse;
 import congtuong.dev.cinemabooking.entity.*;
 import congtuong.dev.cinemabooking.entity.enums.BookingStatus;
 import congtuong.dev.cinemabooking.entity.enums.ShowSeatHoldStatus;
@@ -177,6 +178,17 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    public List<MyBookingResponse> getMyBookings(
+            UUID currentUserId,
+            BookingStatus status
+    ) {
+        return bookingRepository.findMyBookings(currentUserId, status)
+                .stream()
+                .map(this::toMyBookingResponse)
+                .toList();
+    }
+
+    @Override
     @Transactional
     public BookingResponse cancelBooking(UUID currentUserId, UUID bookingId) {
         Booking currentBooking = bookingRepository
@@ -239,5 +251,32 @@ public class BookingServiceImpl implements BookingService {
         currentBooking.markCancelled(Instant.now());
 
         return bookingMapper.toResponse(currentBooking, bookingItems);
+    }
+
+    private MyBookingResponse toMyBookingResponse(Booking booking) {
+        ShowTime showtime = booking.getShowtime();
+        Movie movie = showtime.getMovie();
+        Room room = showtime.getRoom();
+        Cinema cinema = room.getCinema();
+        return new MyBookingResponse(
+                booking.getId(),
+                booking.getStatus(),
+                booking.getTotalAmount(),
+                showtime.getId(),
+                showtime.getStartTime(),
+                showtime.getEndTime(),
+                movie.getId(),
+                movie.getTitle(),
+                movie.getPosterUrl(),
+                cinema.getId(),
+                cinema.getName(),
+                cinema.getAddress(),
+                room.getId(),
+                room.getName(),
+                booking.getPaymentExpiresAt(),
+                booking.getConfirmedAt(),
+                booking.getCancelledAt(),
+                booking.getCreatedAt()
+        );
     }
 }

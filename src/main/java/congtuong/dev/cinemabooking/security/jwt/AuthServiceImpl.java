@@ -7,11 +7,15 @@ import congtuong.dev.cinemabooking.dto.request.RegisterRequest;
 import congtuong.dev.cinemabooking.dto.response.LoginResponse;
 import congtuong.dev.cinemabooking.dto.response.RefreshTokenResponse;
 import congtuong.dev.cinemabooking.dto.response.UserRespone;
+import congtuong.dev.cinemabooking.dto.response.MyProfileResponse;
 import congtuong.dev.cinemabooking.entity.RefreshToken;
 import congtuong.dev.cinemabooking.entity.enums.Role;
 import congtuong.dev.cinemabooking.entity.User;
 import congtuong.dev.cinemabooking.exception.UserAlreadyExistException;
+import congtuong.dev.cinemabooking.exception.UserNotFoundException;
+import congtuong.dev.cinemabooking.messaging.event.UserRegisteredEvent;
 import congtuong.dev.cinemabooking.repository.UserRepository;
+import congtuong.dev.cinemabooking.service.OutboxEventService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -22,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Locale;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -32,6 +37,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final RefreshTokenService refreshTokenService;
+    private final OutboxEventService outboxEventService;
 
     @Override
     @Transactional
@@ -54,6 +60,9 @@ public class AuthServiceImpl implements AuthService {
 
         try {
             User savedUser = userRepository.save(newUser);
+            outboxEventService.append(
+                    UserRegisteredEvent.from(savedUser)
+            );
 
             return new UserRespone(
                     savedUser.getId(),
@@ -94,5 +103,25 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void logout(LogoutRequest logoutRequest) {
         refreshTokenService.revokeRefreshToken(logoutRequest.refreshToken());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MyProfileResponse getMyProfile(UUID currentUserId) {
+        User user = userRepository.findById(currentUserId)
+                .orElseThrow(() ->
+                        new UserNotFoundException("User not found")
+                );
+        return new MyProfileResponse(
+                user.getId(),
+                user.getPhoneNumber(),
+                user.getEmail(),
+                user.getFullname(),
+                user.getBirthDate(),
+                user.getRole(),
+                user.isActive(),
+                user.getCreateAt().toLocalDateTime(),
+                user.getUpdateAt().toLocalDateTime()
+        );
     }
 }

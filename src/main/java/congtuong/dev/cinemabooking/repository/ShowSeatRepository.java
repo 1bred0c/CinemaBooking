@@ -1,6 +1,8 @@
 package congtuong.dev.cinemabooking.repository;
 
 import congtuong.dev.cinemabooking.entity.ShowSeat;
+import congtuong.dev.cinemabooking.dto.response.ShowtimeSeatAvailability;
+import congtuong.dev.cinemabooking.entity.enums.ShowSeatStatus;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -34,4 +36,19 @@ public interface ShowSeatRepository extends JpaRepository<ShowSeat, UUID> {
     List<ShowSeat> findAllByIdForUpdate(@Param("ids") Collection<UUID> ids);
 
     boolean existsByShowtimeId(UUID showtimeId);
+
+    @Query("""
+            select new congtuong.dev.cinemabooking.dto.response.ShowtimeSeatAvailability(
+                ss.showtime.id,
+                count(ss)
+            )
+            from ShowSeat ss
+            where ss.showtime.id in :showtimeIds
+              and ss.status = :status
+            group by ss.showtime.id
+            """)
+    List<ShowtimeSeatAvailability> countByShowtimeIdsAndStatus(
+            @Param("showtimeIds") Collection<UUID> showtimeIds,
+            @Param("status") ShowSeatStatus status
+    );
 }

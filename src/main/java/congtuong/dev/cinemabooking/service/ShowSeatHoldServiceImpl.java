@@ -19,7 +19,9 @@ import congtuong.dev.cinemabooking.repository.ShowSeatHoldItemRepository;
 import congtuong.dev.cinemabooking.repository.ShowSeatHoldRepository;
 import congtuong.dev.cinemabooking.repository.ShowSeatRepository;
 import congtuong.dev.cinemabooking.repository.UserRepository;
+import congtuong.dev.cinemabooking.service.expiration.ShowSeatHoldExpirationWorker;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,12 +38,14 @@ import java.util.UUID;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+@Slf4j
 public class ShowSeatHoldServiceImpl implements ShowSeatHoldService {
     private final ShowSeatRepository showSeatRepository;
     private final ShowSeatHoldRepository showSeatHoldRepository;
     private final ShowSeatHoldItemRepository showSeatHoldItemRepository;
     private final UserRepository userRepository;
     private final BookingProperties bookingProperties;
+    private final ShowSeatHoldExpirationWorker expirationWorker;
 
     @Override
     @Transactional
@@ -177,36 +181,33 @@ public class ShowSeatHoldServiceImpl implements ShowSeatHoldService {
     }
 
     @Override
-    @Transactional
     public int expireActiveHolds() {
-        List<ShowSeatHold> expiredHolds =
-                showSeatHoldRepository.findAllByStatusAndExpiresAtBefore(
+        Instant now = Instant.now();
+        List<UUID> expiredHoldIds =
+                showSeatHoldRepository
+                        .findTop100ByStatusAndExpiresAtBeforeOrderByExpiresAtAsc(
                         ShowSeatHoldStatus.ACTIVE,
-                        Instant.now()
+                        now
+                )
+                        .stream()
+                        .map(ShowSeatHold::getId)
+                        .toList();
+
+        int expiredCount = 0;
+        for (UUID holdId : expiredHoldIds) {
+            try {
+                if (expirationWorker.expire(holdId, now)) {
+                    expiredCount++;
+                }
+            } catch (RuntimeException exception) {
+                log.error(
+                        "Failed to expire show seat holdId={}",
+                        holdId,
+                        exception
                 );
-        if (expiredHolds.isEmpty()) {
-            return 0;
+            }
         }
-
-        // TODO EXPIRATION 1:
-        // Process expired holds in bounded batches.
-
-        // TODO EXPIRATION 2:
-        // Pessimistically lock each hold and its ShowSeat rows.
-
-        // TODO EXPIRATION 3:
-        // Re-check ACTIVE status and expiresAt after locking for idempotency.
-
-        // TODO EXPIRATION 4:
-        // Protect the legal ACTIVE -> EXPIRED transition from payment confirmation.
-
-        // TODO EXPIRATION 5:
-        // Release only seats that are still HELD by the expiring hold, then return
-        // the number of holds transitioned to EXPIRED.
-
-        throw new UnsupportedOperationException(
-                "Core seat hold expiration logic must be implemented"
-        );
+        return expiredCount;
     }
 
     private List<UUID> validateAndGetDistinctIds(ShowSeatHoldCreateRequest request) {

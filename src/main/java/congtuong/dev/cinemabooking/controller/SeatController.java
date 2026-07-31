@@ -1,11 +1,13 @@
 package congtuong.dev.cinemabooking.controller;
 
 import congtuong.dev.cinemabooking.dto.request.SeatCreateRequest;
+import congtuong.dev.cinemabooking.dto.request.SeatLayoutCreateRequest;
 import congtuong.dev.cinemabooking.dto.request.SeatUpdateRequest;
 import congtuong.dev.cinemabooking.dto.response.SeatResponse;
 import congtuong.dev.cinemabooking.service.SeatService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -36,7 +38,17 @@ public class SeatController {
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<SeatResponse> createSeat(@Valid @RequestBody SeatCreateRequest request) {
-        return ResponseEntity.ok(seatService.createSeat(request));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(seatService.createSeat(request));
+    }
+
+    @PostMapping("/batch")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<SeatResponse>> createSeatLayout(
+            @Valid @RequestBody SeatLayoutCreateRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(seatService.createSeatLayout(request));
     }
 
     @PatchMapping("/{seatId}")

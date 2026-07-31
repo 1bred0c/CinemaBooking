@@ -1,9 +1,32 @@
 package congtuong.dev.cinemabooking.repository;
 
 import congtuong.dev.cinemabooking.entity.Movie;
+import congtuong.dev.cinemabooking.entity.enums.ShowtimeStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 public interface MovieRepository extends JpaRepository<Movie, UUID> {
+
+    @Query("""
+            select distinct m from Movie m
+            left join fetch m.genres
+            where m.active = true
+              and exists (
+                  select st.id from ShowTime st
+                  where st.movie = m
+                    and st.active = true
+                    and st.status = :status
+                    and st.startTime > :now
+              )
+            order by m.releaseDate desc, m.title
+            """)
+    List<Movie> findNowShowing(
+            @Param("status") ShowtimeStatus status,
+            @Param("now") LocalDateTime now
+    );
 }

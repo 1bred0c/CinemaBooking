@@ -7,11 +7,14 @@ import congtuong.dev.cinemabooking.dto.request.RegisterRequest;
 import congtuong.dev.cinemabooking.dto.response.LoginResponse;
 import congtuong.dev.cinemabooking.dto.response.RefreshTokenResponse;
 import congtuong.dev.cinemabooking.dto.response.UserRespone;
+import congtuong.dev.cinemabooking.dto.response.MyProfileResponse;
 import congtuong.dev.cinemabooking.security.jwt.AuthService;
+import congtuong.dev.cinemabooking.security.jwt.CustomUserDetails;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -45,6 +48,15 @@ public class AuthController {
     public ResponseEntity<LoginResponse> login (@Valid @RequestBody LoginRequest request){
         LoginResponse response = authService.login(request);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/my-profile")
+    public ResponseEntity<MyProfileResponse> getMyProfile(
+            @AuthenticationPrincipal CustomUserDetails currentUser
+    ) {
+        return ResponseEntity.ok(authService.getMyProfile(
+                currentUser.getUser().getId()
+        ));
     }
 
 }

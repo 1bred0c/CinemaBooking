@@ -27,6 +27,11 @@ public class CinemaController {
                 .body(cinemaService.getCinemas());
     }
 
+    @GetMapping("/active")
+    public ResponseEntity<List<CinemaResponse>> getActiveCinemas() {
+        return ResponseEntity.ok(cinemaService.getActiveCinemas());
+    }
+
     @PostMapping
     public ResponseEntity<CinemaResponse> createCinema(@Valid @RequestBody CinemaCreateRequest request) {
         return ResponseEntity

@@ -6,6 +6,7 @@ import congtuong.dev.cinemabooking.dto.request.RoomUpdateRequest;
 import congtuong.dev.cinemabooking.service.RoomService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
@@ -34,7 +35,7 @@ public class RoomController {
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<RoomResponse> createRoom(@Valid @RequestBody RoomCreateRequest roomCreateRequest) {
         RoomResponse roomResponse = roomService.createRoom(roomCreateRequest);
-        return ResponseEntity.ok(roomResponse);
+        return ResponseEntity.status(HttpStatus.CREATED).body(roomResponse);
     }
 
     @PatchMapping("/{roomId}")

@@ -29,6 +29,14 @@ public class CinemaServiceImpl implements CinemaService {
     }
 
     @Override
+    public List<CinemaResponse> getActiveCinemas() {
+        return cinemaRepository.findAllByIsActiveTrueOrderByName()
+                .stream()
+                .map(this::toCinemaResponse)
+                .toList();
+    }
+
+    @Override
     public CinemaResponse getCinema(UUID id) {
         Cinema cinema = findCinema(id);
         return toCinemaResponse(cinema);

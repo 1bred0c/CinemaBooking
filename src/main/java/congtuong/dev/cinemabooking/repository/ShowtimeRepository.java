@@ -37,6 +37,28 @@ public interface ShowtimeRepository extends JpaRepository<ShowTime, UUID> {
     );
 
     @Query("""
+            select st from ShowTime st
+            join fetch st.movie m
+            join fetch st.room r
+            join fetch r.cinema c
+            where m.id = :movieId
+              and m.active = true
+              and st.active = true
+              and st.status = :status
+              and st.startTime >= :startTime
+              and (:endTime is null or st.startTime < :endTime)
+              and (:cinemaId is null or c.id = :cinemaId)
+            order by st.startTime, c.name, r.name
+            """)
+    List<ShowTime> findBookableByMovie(
+            @Param("movieId") UUID movieId,
+            @Param("cinemaId") UUID cinemaId,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime,
+            @Param("status") ShowtimeStatus status
+    );
+
+    @Query("""
         SELECT CASE WHEN COUNT(st) > 0 THEN true ELSE false END
         FROM ShowTime st
         WHERE st.room.id = :roomId

@@ -10,7 +10,6 @@ public record RoomResponse(
         String name,
         Integer totalSeats,
         Integer totalRows,
-        Integer totalColumns,
         RoomType roomType,
         RoomStatus status,
         UUID cinemaId) {

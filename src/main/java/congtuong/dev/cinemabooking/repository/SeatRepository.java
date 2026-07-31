@@ -13,6 +13,8 @@ import java.util.UUID;
 @Repository
 public interface SeatRepository extends JpaRepository<Seat, UUID> {
     List<Seat> findByRoomId(UUID roomId);
+    long countByRoomIdAndIsActiveTrue(UUID roomId);
+
     @Query("""
             select s from Seat s
             where s.room.id = :roomId

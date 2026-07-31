@@ -6,7 +6,10 @@ import congtuong.dev.cinemabooking.dto.response.MovieResponse;
 import congtuong.dev.cinemabooking.entity.Genre;
 import congtuong.dev.cinemabooking.entity.Movie;
 import congtuong.dev.cinemabooking.entity.enums.AgeRating;
+import congtuong.dev.cinemabooking.exception.MediaException;
 import congtuong.dev.cinemabooking.exception.MovieException;
+import congtuong.dev.cinemabooking.media.MediaStorageService;
+import congtuong.dev.cinemabooking.media.StoredMedia;
 import congtuong.dev.cinemabooking.repository.GenreRepository;
 import congtuong.dev.cinemabooking.repository.MovieRepository;
 import org.junit.jupiter.api.Test;
@@ -14,6 +17,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.mock.web.MockMultipartFile;
 
 import java.time.LocalDate;
 import java.util.LinkedHashSet;
@@ -29,6 +33,8 @@ class MovieServiceImplTest {
     private MovieRepository movieRepository;
     @Mock
     private GenreRepository genreRepository;
+    @Mock
+    private MediaStorageService mediaStorageService;
     @InjectMocks
     private MovieServiceImpl movieService;
 
@@ -100,6 +106,84 @@ class MovieServiceImplTest {
         MovieException exception = assertThrows(MovieException.class, () -> movieService.getMovie(id));
 
         assertEquals("Movie not found", exception.getMessage());
+    }
+
+    @Test
+    void uploadPosterStoresImageAtStableMoviePublicId() {
+        UUID movieId = UUID.randomUUID();
+        Movie movie = movie(movieId);
+        byte[] png = {
+                (byte) 0x89, 0x50, 0x4E, 0x47,
+                0x0D, 0x0A, 0x1A, 0x0A
+        };
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "poster.png",
+                "image/png",
+                png
+        );
+        String publicId = "cinema-booking/movies/"
+                + movieId
+                + "/poster";
+        when(movieRepository.findById(movieId))
+                .thenReturn(Optional.of(movie));
+        when(mediaStorageService.uploadImage(png, publicId))
+                .thenReturn(new StoredMedia(
+                        publicId,
+                        "https://media.example/poster.png"
+                ));
+
+        var response = movieService.uploadPoster(movieId, file);
+
+        assertEquals(movieId, response.movieId());
+        assertEquals(
+                "https://media.example/poster.png",
+                response.posterUrl()
+        );
+        assertEquals(response.posterUrl(), movie.getPosterUrl());
+        verify(mediaStorageService).uploadImage(png, publicId);
+        verify(movieRepository, never()).save(any());
+    }
+
+    @Test
+    void uploadPosterRejectsContentThatIsNotAnAllowedImage() {
+        UUID movieId = UUID.randomUUID();
+        when(movieRepository.findById(movieId))
+                .thenReturn(Optional.of(movie(movieId)));
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "fake.png",
+                "image/png",
+                "not-an-image".getBytes()
+        );
+
+        MediaException exception = assertThrows(
+                MediaException.class,
+                () -> movieService.uploadPoster(movieId, file)
+        );
+
+        assertEquals(
+                "Poster must be a JPEG, PNG, or WebP image",
+                exception.getMessage()
+        );
+        verifyNoInteractions(mediaStorageService);
+    }
+
+    @Test
+    void deletePosterRemovesCloudAssetAndClearsMovieUrl() {
+        UUID movieId = UUID.randomUUID();
+        Movie movie = movie(movieId);
+        movie.setPosterUrl("https://media.example/old-poster.png");
+        when(movieRepository.findById(movieId))
+                .thenReturn(Optional.of(movie));
+
+        movieService.deletePoster(movieId);
+
+        verify(mediaStorageService).deleteImage(
+                "cinema-booking/movies/" + movieId + "/poster"
+        );
+        assertNull(movie.getPosterUrl());
+        verify(movieRepository, never()).save(any());
     }
 
     private Movie movie(UUID id) {

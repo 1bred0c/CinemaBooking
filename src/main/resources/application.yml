@@ -58,6 +58,10 @@ spring:
           connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
 
 logging:
   level:
@@ -84,6 +88,12 @@ booking:
   seat-hold-duration-minutes: ${SEAT_HOLD_DURATION_MINUTES:10}
   expiration-enabled: ${BOOKING_EXPIRATION_ENABLED:true}
   expiration-poll-interval-ms: ${BOOKING_EXPIRATION_POLL_INTERVAL_MS:2000}
+
+media:
+  cloudinary:
+    cloud-name: ${CLOUDINARY_CLOUD_NAME:}
+    api-key: ${CLOUDINARY_API_KEY:}
+    api-secret: ${CLOUDINARY_API_SECRET:}
 
 payment:
   vnpay:

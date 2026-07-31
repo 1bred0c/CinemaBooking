@@ -3,6 +3,8 @@ package congtuong.dev.cinemabooking.service;
 import congtuong.dev.cinemabooking.dto.request.MovieCreateRequest;
 import congtuong.dev.cinemabooking.dto.request.MovieUpdateRequest;
 import congtuong.dev.cinemabooking.dto.response.MovieResponse;
+import congtuong.dev.cinemabooking.dto.response.MoviePosterResponse;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.util.UUID;
@@ -16,4 +18,6 @@ public interface MovieService {
     void deactivateMovie(UUID id);
     MovieResponse addGenre(UUID movieId, UUID genreId);
     MovieResponse removeGenre(UUID movieId, UUID genreId);
+    MoviePosterResponse uploadPoster(UUID movieId, MultipartFile file);
+    void deletePoster(UUID movieId);
 }

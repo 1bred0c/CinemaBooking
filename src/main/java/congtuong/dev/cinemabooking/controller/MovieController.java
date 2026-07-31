@@ -4,6 +4,7 @@ import congtuong.dev.cinemabooking.dto.request.MovieCreateRequest;
 import congtuong.dev.cinemabooking.dto.request.MovieUpdateRequest;
 import congtuong.dev.cinemabooking.dto.response.MovieResponse;
 import congtuong.dev.cinemabooking.dto.response.ShowtimeBrowseResponse;
+import congtuong.dev.cinemabooking.dto.response.MoviePosterResponse;
 import congtuong.dev.cinemabooking.service.MovieService;
 import congtuong.dev.cinemabooking.service.ShowtimeService;
 import jakarta.validation.Valid;
@@ -11,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.MediaType;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 import java.time.LocalDate;
@@ -76,5 +79,24 @@ public class MovieController {
     @DeleteMapping("/{movieId}/genres/{genreId}")
     public MovieResponse removeGenre(@PathVariable UUID movieId, @PathVariable UUID genreId) {
         return movieService.removeGenre(movieId, genreId);
+    }
+
+    @PostMapping(
+            value = "/{movieId}/poster",
+            consumes = MediaType.MULTIPART_FORM_DATA_VALUE
+    )
+    public ResponseEntity<MoviePosterResponse> uploadPoster(
+            @PathVariable UUID movieId,
+            @RequestPart("file") MultipartFile file
+    ) {
+        return ResponseEntity.ok(movieService.uploadPoster(movieId, file));
+    }
+
+    @DeleteMapping("/{movieId}/poster")
+    public ResponseEntity<Void> deletePoster(
+            @PathVariable UUID movieId
+    ) {
+        movieService.deletePoster(movieId);
+        return ResponseEntity.noContent().build();
     }
 }

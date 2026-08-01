@@ -4,6 +4,14 @@ spring:
   config:
     import: optional:file:.env[.properties]
 
+  ai:
+    model:
+      chat: ${AI_CHAT_PROVIDER:openai}
+    openai:
+      chat:
+        options:
+          model: ${OPENAI_CHAT_MODEL:gpt-5.6-luna}
+
   datasource:
     url: ${DB_URL}
     username: ${DB_USERNAME}

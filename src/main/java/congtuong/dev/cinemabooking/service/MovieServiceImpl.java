@@ -1,5 +1,7 @@
 package congtuong.dev.cinemabooking.service;
 
+import congtuong.dev.cinemabooking.ai.indexing.MovieIndexAction;
+import congtuong.dev.cinemabooking.ai.indexing.MovieIndexRequested;
 import congtuong.dev.cinemabooking.dto.request.MovieCreateRequest;
 import congtuong.dev.cinemabooking.dto.request.MovieUpdateRequest;
 import congtuong.dev.cinemabooking.dto.response.GenreSummaryResponse;
@@ -17,6 +19,7 @@ import congtuong.dev.cinemabooking.repository.GenreRepository;
 import congtuong.dev.cinemabooking.repository.MovieRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.multipart.MultipartFile;
@@ -36,6 +39,7 @@ public class MovieServiceImpl implements MovieService {
     private final MovieRepository movieRepository;
     private final GenreRepository genreRepository;
     private final MediaStorageService mediaStorageService;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public List<MovieResponse> getMovies() {
@@ -71,7 +75,9 @@ public class MovieServiceImpl implements MovieService {
                 .trailerUrl(request.trailerUrl())
                 .ageRating(request.ageRating())
                 .build();
-        return toResponse(movieRepository.save(movie));
+        Movie savedMovie = movieRepository.save(movie);
+        requestReindex(savedMovie.getId());
+        return toResponse(savedMovie);
     }
 
     @Override
@@ -86,6 +92,7 @@ public class MovieServiceImpl implements MovieService {
         if (request.posterUrl() != null) movie.setPosterUrl(request.posterUrl());
         if (request.trailerUrl() != null) movie.setTrailerUrl(request.trailerUrl());
         if (request.ageRating() != null) movie.setAgeRating(request.ageRating());
+        requestReindex(movie.getId());
         return toResponse(movie);
     }
 
@@ -93,6 +100,10 @@ public class MovieServiceImpl implements MovieService {
     @Transactional
     public void deactivateMovie(UUID id) {
         findMovie(id).setActive(false);
+        eventPublisher.publishEvent(new MovieIndexRequested(
+                id,
+                MovieIndexAction.REMOVE
+        ));
     }
 
     @Override
@@ -101,6 +112,7 @@ public class MovieServiceImpl implements MovieService {
         Movie movie = findMovie(movieId);
         Genre genre = findGenre(genreId);
         movie.getGenres().add(genre);
+        requestReindex(movie.getId());
         return toResponse(movie);
     }
 
@@ -110,6 +122,7 @@ public class MovieServiceImpl implements MovieService {
         Movie movie = findMovie(movieId);
         Genre genre = findGenre(genreId);
         movie.getGenres().remove(genre);
+        requestReindex(movie.getId());
         return toResponse(movie);
     }
 
@@ -235,5 +248,12 @@ public class MovieServiceImpl implements MovieService {
 
     private GenreSummaryResponse toGenreSummaryResponse(Genre genre) {
         return new GenreSummaryResponse(genre.getId(), genre.getName());
+    }
+
+    private void requestReindex(UUID movieId) {
+        eventPublisher.publishEvent(new MovieIndexRequested(
+                movieId,
+                MovieIndexAction.REINDEX
+        ));
     }
 }

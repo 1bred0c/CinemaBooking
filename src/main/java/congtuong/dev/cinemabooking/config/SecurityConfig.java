@@ -93,6 +93,7 @@ public class SecurityConfig {
 
                         .requestMatchers(
                                 HttpMethod.POST,
+                                "/api/v1/admin/ai/index/**",
                                 "/api/v1/movies/**",
                                 "/api/v1/genres/**",
                                 "/api/v1/showtimes/**"

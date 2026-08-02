@@ -4,6 +4,11 @@ import congtuong.dev.cinemabooking.config.KafkaTopicsProperties;
 import congtuong.dev.cinemabooking.entity.OutboxEvent;
 import congtuong.dev.cinemabooking.entity.enums.OutboxEventStatus;
 import congtuong.dev.cinemabooking.messaging.event.UserRegisteredEvent;
+import congtuong.dev.cinemabooking.messaging.event.BookingNotificationEvent;
+import congtuong.dev.cinemabooking.entity.Booking;
+import congtuong.dev.cinemabooking.entity.Movie;
+import congtuong.dev.cinemabooking.entity.ShowTime;
+import congtuong.dev.cinemabooking.entity.User;
 import congtuong.dev.cinemabooking.repository.OutboxEventRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -67,5 +72,50 @@ class OutboxEventServiceImplTest {
         assertThat(stored.getPayload())
                 .contains(eventId.toString())
                 .contains("user@example.com");
+    }
+
+    @Test
+    void appendStoresBookingEventInBookingTopic() {
+        ObjectMapper objectMapper = JsonMapper.builder()
+                .findAndAddModules()
+                .build();
+        OutboxEventServiceImpl service = new OutboxEventServiceImpl(
+                outboxEventRepository,
+                new KafkaTopicsProperties(
+                        "cinema.user.events",
+                        "cinema.booking.events"
+                ),
+                objectMapper
+        );
+        UUID bookingId = UUID.randomUUID();
+        User user = User.builder()
+                .id(UUID.randomUUID())
+                .email("user@example.com")
+                .fullname("Cinema User")
+                .build();
+        Booking booking = Booking.builder()
+                .id(bookingId)
+                .user(user)
+                .showtime(ShowTime.builder()
+                        .movie(Movie.builder().title("Test Movie").build())
+                        .build())
+                .build();
+        BookingNotificationEvent event =
+                BookingNotificationEvent.expired(
+                        booking,
+                        Instant.parse("2026-07-31T10:00:00Z")
+                );
+
+        service.append(event);
+
+        ArgumentCaptor<OutboxEvent> captor =
+                ArgumentCaptor.forClass(OutboxEvent.class);
+        verify(outboxEventRepository).save(captor.capture());
+        OutboxEvent stored = captor.getValue();
+        assertThat(stored.getAggregateType()).isEqualTo("BOOKING");
+        assertThat(stored.getAggregateId()).isEqualTo(bookingId);
+        assertThat(stored.getEventType()).isEqualTo("BOOKING_EXPIRED");
+        assertThat(stored.getTopic()).isEqualTo("cinema.booking.events");
+        assertThat(stored.getEventKey()).isEqualTo(bookingId.toString());
     }
 }

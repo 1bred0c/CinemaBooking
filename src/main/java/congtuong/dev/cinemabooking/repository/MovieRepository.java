@@ -3,14 +3,22 @@ package congtuong.dev.cinemabooking.repository;
 import congtuong.dev.cinemabooking.entity.Movie;
 import congtuong.dev.cinemabooking.entity.enums.ShowtimeStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.Optional;
 
 public interface MovieRepository extends JpaRepository<Movie, UUID> {
+
+    @EntityGraph(attributePaths = "genres")
+    Optional<Movie> findWithGenresById(UUID id);
+
+    @EntityGraph(attributePaths = "genres")
+    List<Movie> findAllByActiveTrueOrderByTitleAsc();
 
     @Query("""
             select distinct m from Movie m

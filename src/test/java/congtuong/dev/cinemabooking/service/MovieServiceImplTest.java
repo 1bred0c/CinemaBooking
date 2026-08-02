@@ -18,6 +18,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.time.LocalDate;
 import java.util.LinkedHashSet;
@@ -35,6 +36,8 @@ class MovieServiceImplTest {
     private GenreRepository genreRepository;
     @Mock
     private MediaStorageService mediaStorageService;
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
     @InjectMocks
     private MovieServiceImpl movieService;
 

@@ -50,6 +50,8 @@ class PaymentServiceImplTest {
     private PaymentMapper paymentMapper;
     @Mock
     private TransactionTemplate paymentTransactionTemplate;
+    @Mock
+    private OutboxEventService outboxEventService;
     @InjectMocks
     private PaymentServiceImpl paymentService;
 

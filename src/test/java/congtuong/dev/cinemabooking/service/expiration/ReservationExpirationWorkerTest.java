@@ -6,6 +6,9 @@ import congtuong.dev.cinemabooking.entity.Payment;
 import congtuong.dev.cinemabooking.entity.ShowSeat;
 import congtuong.dev.cinemabooking.entity.ShowSeatHold;
 import congtuong.dev.cinemabooking.entity.ShowSeatHoldItem;
+import congtuong.dev.cinemabooking.entity.ShowTime;
+import congtuong.dev.cinemabooking.entity.Movie;
+import congtuong.dev.cinemabooking.entity.User;
 import congtuong.dev.cinemabooking.entity.enums.BookingStatus;
 import congtuong.dev.cinemabooking.entity.enums.PaymentStatus;
 import congtuong.dev.cinemabooking.entity.enums.ShowSeatHoldStatus;
@@ -16,6 +19,7 @@ import congtuong.dev.cinemabooking.repository.PaymentRepository;
 import congtuong.dev.cinemabooking.repository.ShowSeatHoldItemRepository;
 import congtuong.dev.cinemabooking.repository.ShowSeatHoldRepository;
 import congtuong.dev.cinemabooking.repository.ShowSeatRepository;
+import congtuong.dev.cinemabooking.service.OutboxEventService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -46,6 +50,8 @@ class ReservationExpirationWorkerTest {
     private ShowSeatHoldItemRepository showSeatHoldItemRepository;
     @Mock
     private ShowSeatRepository showSeatRepository;
+    @Mock
+    private OutboxEventService outboxEventService;
 
     @Test
     void expiredActiveHoldReleasesHeldSeats() {
@@ -97,6 +103,14 @@ class ReservationExpirationWorkerTest {
         Booking booking = Booking.builder()
                 .id(bookingId)
                 .hold(hold)
+                .user(User.builder()
+                        .id(UUID.randomUUID())
+                        .email("user@example.com")
+                        .fullname("Cinema User")
+                        .build())
+                .showtime(ShowTime.builder()
+                        .movie(Movie.builder().title("Test Movie").build())
+                        .build())
                 .status(BookingStatus.PENDING_PAYMENT)
                 .paymentExpiresAt(now.minusSeconds(1))
                 .build();
@@ -120,7 +134,8 @@ class ReservationExpirationWorkerTest {
                 bookingRepository,
                 bookingItemRepository,
                 showSeatHoldRepository,
-                showSeatRepository
+                showSeatRepository,
+                outboxEventService
         );
 
         boolean expired = worker.expire(bookingId, now);
@@ -147,7 +162,8 @@ class ReservationExpirationWorkerTest {
                 bookingRepository,
                 bookingItemRepository,
                 showSeatHoldRepository,
-                showSeatRepository
+                showSeatRepository,
+                outboxEventService
         );
 
         boolean expired = worker.expire(bookingId, now);

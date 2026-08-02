@@ -11,6 +11,8 @@ import congtuong.dev.cinemabooking.repository.BookingItemRepository;
 import congtuong.dev.cinemabooking.repository.BookingRepository;
 import congtuong.dev.cinemabooking.repository.ShowSeatHoldRepository;
 import congtuong.dev.cinemabooking.repository.ShowSeatRepository;
+import congtuong.dev.cinemabooking.messaging.event.BookingNotificationEvent;
+import congtuong.dev.cinemabooking.service.OutboxEventService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -28,6 +30,7 @@ public class BookingExpirationWorker {
     private final BookingItemRepository bookingItemRepository;
     private final ShowSeatHoldRepository showSeatHoldRepository;
     private final ShowSeatRepository showSeatRepository;
+    private final OutboxEventService outboxEventService;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public boolean expire(UUID bookingId, Instant now) {
@@ -73,6 +76,9 @@ public class BookingExpirationWorker {
             hold.setStatus(ShowSeatHoldStatus.EXPIRED);
         }
         booking.markExpired();
+        outboxEventService.append(
+                BookingNotificationEvent.expired(booking, now)
+        );
         return true;
     }
 }

@@ -13,6 +13,7 @@ import congtuong.dev.cinemabooking.entity.enums.PaymentStatus;
 import congtuong.dev.cinemabooking.entity.enums.ShowSeatStatus;
 import congtuong.dev.cinemabooking.exception.PaymentException;
 import congtuong.dev.cinemabooking.mapper.PaymentMapper;
+import congtuong.dev.cinemabooking.messaging.event.BookingNotificationEvent;
 import congtuong.dev.cinemabooking.payment.PaymentGateway;
 import congtuong.dev.cinemabooking.payment.PaymentGatewayFactory;
 import congtuong.dev.cinemabooking.payment.dto.PaymentGatewayCallback;
@@ -48,6 +49,7 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentGatewayFactory paymentGatewayFactory;
     private final PaymentMapper paymentMapper;
     private final TransactionTemplate paymentTransactionTemplate;
+    private final OutboxEventService outboxEventService;
 
     @Override
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
@@ -336,6 +338,14 @@ public class PaymentServiceImpl implements PaymentService {
                     truncateReason(callback.message()),
                     callback.occurredAt()
             );
+            outboxEventService.append(
+                    BookingNotificationEvent.paymentFailed(
+                            payment.getBooking(),
+                            payment,
+                            truncateReason(callback.message()),
+                            callback.occurredAt()
+                    )
+            );
             return toCallbackResponse(payment);
         }
         if (callback.providerTransactionId() == null
@@ -388,6 +398,13 @@ public class PaymentServiceImpl implements PaymentService {
                 callback.occurredAt()
         );
         booking.markConfirmed(callback.occurredAt());
+        outboxEventService.append(
+                BookingNotificationEvent.confirmed(
+                        booking,
+                        payment,
+                        callback.occurredAt()
+                )
+        );
         return toCallbackResponse(payment);
     }
 

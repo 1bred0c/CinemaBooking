@@ -7,6 +7,7 @@ public record ChatQueryPlan(
 ) {
     public boolean requiresMovieSearch() {
         return intent == ChatIntent.MOVIE_SEARCH
-                || intent == ChatIntent.MOVIE_INFORMATION;
+                || intent == ChatIntent.MOVIE_INFORMATION
+                || intent == ChatIntent.MOVIE_SEARCH_WITH_LIVE_DATA;
     }
 }

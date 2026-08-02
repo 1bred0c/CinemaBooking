@@ -6,5 +6,6 @@ public enum ChatIntent {
     GREETING,
     HELP,
     LIVE_DATA,
+    MOVIE_SEARCH_WITH_LIVE_DATA,
     OUT_OF_SCOPE
 }

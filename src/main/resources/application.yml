@@ -5,6 +5,12 @@ spring:
     import: optional:file:.env[.properties]
 
   ai:
+    tools:
+      throw-exception-on-error: ${AI_TOOL_THROW_ON_ERROR:true}
+    chat:
+      client:
+        tool-calling:
+          enabled: ${AI_TOOL_CALLING_ENABLED:true}
     model:
       chat: ${AI_CHAT_PROVIDER:openai}
       embedding: openai
@@ -87,6 +93,7 @@ logging:
     org.hibernate.orm.jdbc.bind: WARN
     congtuong.dev.cinemabooking.ai.retrieval.HybridMovieRetrieverImpl: ${AI_HYBRID_SEARCH_LOG_LEVEL:DEBUG}
     congtuong.dev.cinemabooking.ai.ranking.MovieRerankerImpl: ${AI_HYBRID_SEARCH_LOG_LEVEL:DEBUG}
+    congtuong.dev.cinemabooking.ai.tool: ${AI_TOOL_LOG_LEVEL:DEBUG}
 
 app:
   ai:

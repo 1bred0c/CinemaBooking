@@ -10,11 +10,14 @@ import congtuong.dev.cinemabooking.ai.ranking.MovieReranker;
 import congtuong.dev.cinemabooking.ai.ranking.RankedMovie;
 import congtuong.dev.cinemabooking.ai.retrieval.HybridMovieRetriever;
 import congtuong.dev.cinemabooking.ai.retrieval.MovieCandidate;
+import congtuong.dev.cinemabooking.ai.tool.CinemaBookingTools;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.ArgumentCaptor;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.openai.OpenAiChatOptions;
 
 import java.util.List;
 import java.util.UUID;
@@ -23,6 +26,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,6 +38,7 @@ class AiChatServiceImplTest {
     @Mock private ChatQueryAnalyzer queryAnalyzer;
     @Mock private HybridMovieRetriever hybridMovieRetriever;
     @Mock private MovieReranker movieReranker;
+    @Mock private CinemaBookingTools cinemaBookingTools;
 
     @Test
     void chatReturnsGroundedContentFromFinalRerankedSources() {
@@ -59,6 +64,9 @@ class AiChatServiceImplTest {
         when(chatClient.prompt()).thenReturn(requestSpec);
         when(requestSpec.system(any(String.class))).thenReturn(requestSpec);
         when(requestSpec.user(message)).thenReturn(requestSpec);
+        when(requestSpec.options(any(OpenAiChatOptions.Builder.class)))
+                .thenReturn(requestSpec);
+        when(requestSpec.tools(any(Object[].class))).thenReturn(requestSpec);
         when(requestSpec.call()).thenReturn(responseSpec);
         when(responseSpec.content()).thenReturn("Bạn có thể xem Interstellar.");
 
@@ -67,6 +75,36 @@ class AiChatServiceImplTest {
         assertEquals("Bạn có thể xem Interstellar.", response.message());
         assertEquals(movieId, response.sources().get(0).movieId());
         assertEquals(0.95, response.sources().get(0).score());
+    }
+
+    @Test
+    void liveDataIntentUsesToolsWithoutRunningRag() {
+        AiChatService service = service();
+        String message = "Interstellar tối nay có suất nào?";
+        when(queryAnalyzer.analyze(message)).thenReturn(new ChatQueryPlan(
+                ChatIntent.LIVE_DATA, 0.95, null
+        ));
+        when(chatClient.prompt()).thenReturn(requestSpec);
+        when(requestSpec.system(any(String.class))).thenReturn(requestSpec);
+        when(requestSpec.user(message)).thenReturn(requestSpec);
+        when(requestSpec.options(any(OpenAiChatOptions.Builder.class)))
+                .thenReturn(requestSpec);
+        when(requestSpec.tools(any(Object[].class))).thenReturn(requestSpec);
+        when(requestSpec.call()).thenReturn(responseSpec);
+        when(responseSpec.content()).thenReturn("Có suất lúc 19:30.");
+
+        ChatResponse response = service.chat(message);
+
+        assertEquals("Có suất lúc 19:30.", response.message());
+        assertEquals(List.of(), response.sources());
+        ArgumentCaptor<OpenAiChatOptions.Builder> optionsCaptor =
+                ArgumentCaptor.forClass(OpenAiChatOptions.Builder.class);
+        verify(requestSpec).options(optionsCaptor.capture());
+        assertEquals(
+                "none",
+                optionsCaptor.getValue().build().getReasoningEffort()
+        );
+        verifyNoInteractions(hybridMovieRetriever, movieReranker);
     }
 
     @Test
@@ -139,7 +177,8 @@ class AiChatServiceImplTest {
                 chatClient,
                 queryAnalyzer,
                 hybridMovieRetriever,
-                movieReranker
+                movieReranker,
+                cinemaBookingTools
         );
     }
 

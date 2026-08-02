@@ -2,6 +2,7 @@ package congtuong.dev.cinemabooking.repository;
 
 import congtuong.dev.cinemabooking.entity.ShowTime;
 import congtuong.dev.cinemabooking.entity.enums.ShowtimeStatus;
+import congtuong.dev.cinemabooking.entity.enums.RoomStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,6 +15,112 @@ import java.util.UUID;
 public interface ShowtimeRepository extends JpaRepository<ShowTime, UUID> {
 
     Optional<ShowTime> findByIdAndActiveTrue(UUID id);
+
+    @Query("""
+            select st from ShowTime st
+            join fetch st.movie m
+            join fetch st.room r
+            join fetch r.cinema c
+            where st.id = :showtimeId
+              and st.active = true
+              and m.active = true
+              and c.isActive = true
+            """)
+    Optional<ShowTime> findActiveDetailsById(
+            @Param("showtimeId") UUID showtimeId
+    );
+
+    @Query("""
+            select st from ShowTime st
+            join fetch st.movie m
+            join fetch st.room r
+            join fetch r.cinema c
+            where st.active = true
+              and st.status = :showtimeStatus
+              and m.active = true
+              and r.status = :roomStatus
+              and c.isActive = true
+              and lower(m.title) like lower(concat('%', :movieTitle, '%'))
+              and lower(c.name) like lower(concat('%', :cinemaName, '%'))
+              and st.startTime >= :startTime
+              and st.startTime < :endTime
+            order by st.startTime, c.name, r.name
+            """)
+    List<ShowTime> searchBookableForTool(
+            @Param("movieTitle") String movieTitle,
+            @Param("cinemaName") String cinemaName,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime,
+            @Param("showtimeStatus") ShowtimeStatus showtimeStatus,
+            @Param("roomStatus") RoomStatus roomStatus
+    );
+
+    @Query("""
+            select st from ShowTime st
+            join fetch st.movie m
+            join fetch st.room r
+            join fetch r.cinema c
+            where st.active = true
+              and st.status = :showtimeStatus
+              and m.active = true
+              and r.status = :roomStatus
+              and c.isActive = true
+              and lower(m.title) like lower(concat('%', :movieTitle, '%'))
+              and st.startTime >= :startTime
+              and st.startTime < :endTime
+            order by st.startTime, c.name, r.name
+            """)
+    List<ShowTime> searchBookableForToolWithoutCinema(
+            @Param("movieTitle") String movieTitle,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime,
+            @Param("showtimeStatus") ShowtimeStatus showtimeStatus,
+            @Param("roomStatus") RoomStatus roomStatus
+    );
+
+    @Query("""
+            select st from ShowTime st
+            join fetch st.movie m
+            join fetch st.room r
+            join fetch r.cinema c
+            where st.active = true
+              and st.status = :showtimeStatus
+              and m.id = :movieId
+              and m.active = true
+              and r.status = :roomStatus
+              and c.isActive = true
+              and st.startTime >= :startTime
+              and st.startTime < :endTime
+            order by st.startTime, c.name, r.name
+            """)
+    List<ShowTime> searchBookableForToolByMovieId(
+            @Param("movieId") UUID movieId,
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime,
+            @Param("showtimeStatus") ShowtimeStatus showtimeStatus,
+            @Param("roomStatus") RoomStatus roomStatus
+    );
+
+    @Query("""
+            select st from ShowTime st
+            join fetch st.movie m
+            join fetch st.room r
+            join fetch r.cinema c
+            where st.active = true
+              and st.status = :showtimeStatus
+              and m.active = true
+              and r.status = :roomStatus
+              and c.isActive = true
+              and st.startTime >= :startTime
+              and st.startTime < :endTime
+            order by st.startTime, m.title, c.name, r.name
+            """)
+    List<ShowTime> searchBookableForToolByDate(
+            @Param("startTime") LocalDateTime startTime,
+            @Param("endTime") LocalDateTime endTime,
+            @Param("showtimeStatus") ShowtimeStatus showtimeStatus,
+            @Param("roomStatus") RoomStatus roomStatus
+    );
 
     @Query("""
             select s from ShowTime s

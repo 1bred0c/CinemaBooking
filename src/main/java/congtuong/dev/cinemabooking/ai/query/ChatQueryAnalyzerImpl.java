@@ -24,6 +24,17 @@ public class ChatQueryAnalyzerImpl implements ChatQueryAnalyzer {
             - GREETING: greeting or thanks only.
             - HELP: asks what the assistant can do.
             - LIVE_DATA: current showtimes, cinemas, seats, prices, bookings.
+              Use this only when the user supplies a specific movie title or a
+              CinemaBooking ID, or asks what movies are actually showing on a
+              date/time without giving thematic constraints. Example: "ngày
+              mai có phim gì hay không?" is LIVE_DATA because the scheduled
+              catalog must be queried first; "hay" alone is not a movie-search
+              constraint.
+            - MOVIE_SEARCH_WITH_LIVE_DATA: the user describes the kind of movie
+              they want by theme, plot, mood or genre and also asks for current
+              showtimes, cinemas, seats or prices. Example: "lịch chiếu phim về
+              sát thủ ngày mai". Build movieSearch only from the movie-discovery
+              portion; exclude dates, showtime wording and cinema constraints.
             - OUT_OF_SCOPE: unrelated to movies or cinemas.
 
             Extraction rules:

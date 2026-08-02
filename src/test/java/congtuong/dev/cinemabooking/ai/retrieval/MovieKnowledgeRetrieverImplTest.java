@@ -40,7 +40,7 @@ class MovieKnowledgeRetrieverImplTest {
         )).thenReturn(List.of(document));
         MovieKnowledgeRetriever retriever = new MovieKnowledgeRetrieverImpl(
                 vectorStoreRetriever,
-                new MovieRagProperties(4, 0.7)
+                new MovieRagProperties(4, 0.7, 10, 60, true)
         );
 
         List<MovieSearchResult> results = retriever.search("alien language");

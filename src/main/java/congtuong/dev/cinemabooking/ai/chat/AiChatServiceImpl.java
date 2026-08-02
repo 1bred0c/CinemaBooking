@@ -3,8 +3,13 @@ package congtuong.dev.cinemabooking.ai.chat;
 import congtuong.dev.cinemabooking.ai.chat.dto.ChatResponse;
 import congtuong.dev.cinemabooking.ai.chat.dto.MovieSourceResponse;
 import congtuong.dev.cinemabooking.ai.chat.exception.AiChatException;
-import congtuong.dev.cinemabooking.ai.retrieval.MovieKnowledgeRetriever;
-import congtuong.dev.cinemabooking.ai.retrieval.MovieSearchResult;
+import congtuong.dev.cinemabooking.ai.query.ChatIntent;
+import congtuong.dev.cinemabooking.ai.query.ChatQueryAnalyzer;
+import congtuong.dev.cinemabooking.ai.query.ChatQueryPlan;
+import congtuong.dev.cinemabooking.ai.ranking.MovieReranker;
+import congtuong.dev.cinemabooking.ai.ranking.RankedMovie;
+import congtuong.dev.cinemabooking.ai.retrieval.HybridMovieRetriever;
+import congtuong.dev.cinemabooking.ai.retrieval.MovieCandidate;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -33,12 +38,27 @@ public class AiChatServiceImpl implements AiChatService {
             "Mình chưa tìm thấy phim phù hợp trong dữ liệu CinemaBooking.";
 
     private final ChatClient chatClient;
-    private final MovieKnowledgeRetriever movieKnowledgeRetriever;
+    private final ChatQueryAnalyzer queryAnalyzer;
+    private final HybridMovieRetriever hybridMovieRetriever;
+    private final MovieReranker movieReranker;
 
     @Override
     public ChatResponse chat(String message) {
         try {
-            List<MovieSearchResult> results = movieKnowledgeRetriever.search(message);
+            ChatQueryPlan plan = queryAnalyzer.analyze(message);
+            ChatResponse directResponse = directResponse(plan.intent());
+            if (directResponse != null) {
+                return directResponse;
+            }
+
+            List<MovieCandidate> candidates = hybridMovieRetriever.search(
+                    plan.movieSearch()
+            );
+            List<RankedMovie> results = movieReranker.rerank(
+                    message,
+                    plan.movieSearch(),
+                    candidates
+            );
             if (results.isEmpty()) {
                 return new ChatResponse(NO_RESULT_MESSAGE);
             }
@@ -47,7 +67,12 @@ public class AiChatServiceImpl implements AiChatService {
                     .map(result -> """
                             [Movie ID: %s]
                             %s
-                            """.formatted(result.movieId(), result.content()).strip())
+                            Retrieval reason: %s
+                            """.formatted(
+                            result.movieId(),
+                            result.content(),
+                            result.reason()
+                    ).strip())
                     .collect(Collectors.joining("\n\n---\n\n"));
 
             String answer = chatClient.prompt()
@@ -65,7 +90,7 @@ public class AiChatServiceImpl implements AiChatService {
                     .map(result -> new MovieSourceResponse(
                             result.movieId(),
                             result.title(),
-                            result.score()
+                            result.relevanceScore()
                     ))
                     .toList();
             return new ChatResponse(answer, sources);
@@ -83,5 +108,25 @@ public class AiChatServiceImpl implements AiChatService {
                     exception
             );
         }
+    }
+
+    private ChatResponse directResponse(ChatIntent intent) {
+        return switch (intent) {
+            case GREETING -> new ChatResponse(
+                    "Xin chào! Mình có thể giúp bạn tìm và khám phá phim."
+            );
+            case HELP -> new ChatResponse(
+                    "Mình có thể gợi ý phim theo nội dung, thể loại, đạo diễn, "
+                            + "thời lượng, độ tuổi và năm phát hành."
+            );
+            case LIVE_DATA -> new ChatResponse(
+                    "Phase hiện tại chưa truy cập dữ liệu realtime về suất chiếu, "
+                            + "giá vé hoặc ghế trống."
+            );
+            case OUT_OF_SCOPE -> new ChatResponse(
+                    "Mình chỉ hỗ trợ các câu hỏi liên quan đến phim và rạp chiếu."
+            );
+            case MOVIE_SEARCH, MOVIE_INFORMATION -> null;
+        };
     }
 }

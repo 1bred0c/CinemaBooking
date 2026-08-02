@@ -85,11 +85,16 @@ logging:
   level:
     org.hibernate.SQL: WARN
     org.hibernate.orm.jdbc.bind: WARN
+    congtuong.dev.cinemabooking.ai.retrieval.HybridMovieRetrieverImpl: ${AI_HYBRID_SEARCH_LOG_LEVEL:DEBUG}
+    congtuong.dev.cinemabooking.ai.ranking.MovieRerankerImpl: ${AI_HYBRID_SEARCH_LOG_LEVEL:DEBUG}
 
 app:
   ai:
     rag:
-      top-k: ${AI_RAG_TOP_K:5}
+      top-k: ${AI_RAG_TOP_K:3}
+      candidate-k: ${AI_RAG_CANDIDATE_K:10}
+      rrf-constant: ${AI_RAG_RRF_CONSTANT:60}
+      rerank-enabled: ${AI_RAG_RERANK_ENABLED:true}
       similarity-threshold: ${AI_RAG_SIMILARITY_THRESHOLD:0.00}
   kafka:
     topics:

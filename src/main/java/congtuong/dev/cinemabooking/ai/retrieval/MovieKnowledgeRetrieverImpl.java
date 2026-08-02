@@ -19,10 +19,23 @@ public class MovieKnowledgeRetrieverImpl implements MovieKnowledgeRetriever {
 
     @Override
     public List<MovieSearchResult> search(String query) {
+        return search(
+                query,
+                properties.topK(),
+                properties.similarityThreshold()
+        );
+    }
+
+    @Override
+    public List<MovieSearchResult> search(
+            String query,
+            int topK,
+            double similarityThreshold
+    ) {
         SearchRequest request = SearchRequest.builder()
                 .query(query)
-                .topK(properties.topK())
-                .similarityThreshold(properties.similarityThreshold())
+                .topK(topK)
+                .similarityThreshold(similarityThreshold)
                 .filterExpression("active == true && sourceType == 'MOVIE'")
                 .build();
 

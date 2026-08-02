@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.Optional;
+import java.util.Collection;
 
 public interface MovieRepository extends JpaRepository<Movie, UUID> {
 
@@ -19,6 +20,9 @@ public interface MovieRepository extends JpaRepository<Movie, UUID> {
 
     @EntityGraph(attributePaths = "genres")
     List<Movie> findAllByActiveTrueOrderByTitleAsc();
+
+    @EntityGraph(attributePaths = "genres")
+    List<Movie> findAllByIdInAndActiveTrue(Collection<UUID> ids);
 
     @Query("""
             select distinct m from Movie m

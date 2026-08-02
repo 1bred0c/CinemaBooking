@@ -97,6 +97,9 @@ logging:
 
 app:
   ai:
+    memory:
+      recent-turns: ${AI_MEMORY_RECENT_TURNS:5}
+      summary-interval-turns: ${AI_MEMORY_SUMMARY_INTERVAL_TURNS:5}
     rag:
       top-k: ${AI_RAG_TOP_K:3}
       candidate-k: ${AI_RAG_CANDIDATE_K:10}

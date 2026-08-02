@@ -26,7 +26,9 @@ class ChatQueryAnalyzerImplTest {
         when(chatClient.prompt()).thenThrow(new IllegalStateException("down"));
         ChatQueryAnalyzer analyzer = new ChatQueryAnalyzerImpl(chatClient);
 
-        ChatQueryPlan plan = analyzer.analyze("phim sinh tồn trên sao Hỏa");
+        ChatQueryPlan plan = analyzer.analyze(
+                "phim sinh tồn trên sao Hỏa", ""
+        );
 
         assertEquals(ChatIntent.MOVIE_SEARCH, plan.intent());
         assertEquals(0.0, plan.confidence());

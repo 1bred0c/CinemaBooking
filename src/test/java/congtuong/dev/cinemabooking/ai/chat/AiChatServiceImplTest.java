@@ -11,6 +11,8 @@ import congtuong.dev.cinemabooking.ai.ranking.RankedMovie;
 import congtuong.dev.cinemabooking.ai.retrieval.HybridMovieRetriever;
 import congtuong.dev.cinemabooking.ai.retrieval.MovieCandidate;
 import congtuong.dev.cinemabooking.ai.tool.CinemaBookingTools;
+import congtuong.dev.cinemabooking.ai.memory.ConversationMemoryContext;
+import congtuong.dev.cinemabooking.ai.memory.ConversationMemoryService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -32,6 +34,8 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 class AiChatServiceImplTest {
 
+    private static final UUID USER_ID = UUID.randomUUID();
+
     @Mock private ChatClient chatClient;
     @Mock private ChatClient.ChatClientRequestSpec requestSpec;
     @Mock private ChatClient.CallResponseSpec responseSpec;
@@ -39,6 +43,7 @@ class AiChatServiceImplTest {
     @Mock private HybridMovieRetriever hybridMovieRetriever;
     @Mock private MovieReranker movieReranker;
     @Mock private CinemaBookingTools cinemaBookingTools;
+    @Mock private ConversationMemoryService conversationMemoryService;
 
     @Test
     void chatReturnsGroundedContentFromFinalRerankedSources() {
@@ -54,7 +59,8 @@ class AiChatServiceImplTest {
                 movieId, "Interstellar", candidate.content(),
                 0.95, "Phù hợp nội dung khám phá không gian"
         );
-        when(queryAnalyzer.analyze(message)).thenReturn(new ChatQueryPlan(
+        memoryIsEmpty();
+        when(queryAnalyzer.analyze(message, "")).thenReturn(new ChatQueryPlan(
                 ChatIntent.MOVIE_SEARCH, 0.9, searchPlan
         ));
         when(hybridMovieRetriever.search(searchPlan))
@@ -70,7 +76,7 @@ class AiChatServiceImplTest {
         when(requestSpec.call()).thenReturn(responseSpec);
         when(responseSpec.content()).thenReturn("Bạn có thể xem Interstellar.");
 
-        ChatResponse response = service.chat(message);
+        ChatResponse response = service.chat(USER_ID, message);
 
         assertEquals("Bạn có thể xem Interstellar.", response.message());
         assertEquals(movieId, response.sources().get(0).movieId());
@@ -81,7 +87,8 @@ class AiChatServiceImplTest {
     void liveDataIntentUsesToolsWithoutRunningRag() {
         AiChatService service = service();
         String message = "Interstellar tối nay có suất nào?";
-        when(queryAnalyzer.analyze(message)).thenReturn(new ChatQueryPlan(
+        memoryIsEmpty();
+        when(queryAnalyzer.analyze(message, "")).thenReturn(new ChatQueryPlan(
                 ChatIntent.LIVE_DATA, 0.95, null
         ));
         when(chatClient.prompt()).thenReturn(requestSpec);
@@ -93,7 +100,7 @@ class AiChatServiceImplTest {
         when(requestSpec.call()).thenReturn(responseSpec);
         when(responseSpec.content()).thenReturn("Có suất lúc 19:30.");
 
-        ChatResponse response = service.chat(message);
+        ChatResponse response = service.chat(USER_ID, message);
 
         assertEquals("Có suất lúc 19:30.", response.message());
         assertEquals(List.of(), response.sources());
@@ -110,11 +117,12 @@ class AiChatServiceImplTest {
     @Test
     void greetingDoesNotSearchOrCallGenerationModel() {
         AiChatService service = service();
-        when(queryAnalyzer.analyze("Xin chào")).thenReturn(new ChatQueryPlan(
+        memoryIsEmpty();
+        when(queryAnalyzer.analyze("Xin chào", "")).thenReturn(new ChatQueryPlan(
                 ChatIntent.GREETING, 1.0, null
         ));
 
-        ChatResponse response = service.chat("Xin chào");
+        ChatResponse response = service.chat(USER_ID, "Xin chào");
 
         assertEquals(
                 "Xin chào! Mình có thể giúp bạn tìm và khám phá phim.",
@@ -135,7 +143,8 @@ class AiChatServiceImplTest {
                 candidate.movieId(), candidate.title(), candidate.content(),
                 0.8, "Phim khoa học viễn tưởng"
         );
-        when(queryAnalyzer.analyze(message)).thenReturn(new ChatQueryPlan(
+        memoryIsEmpty();
+        when(queryAnalyzer.analyze(message, "")).thenReturn(new ChatQueryPlan(
                 ChatIntent.MOVIE_SEARCH, 0.8, plan
         ));
         when(hybridMovieRetriever.search(plan)).thenReturn(List.of(candidate));
@@ -145,7 +154,7 @@ class AiChatServiceImplTest {
 
         AiChatException exception = assertThrows(
                 AiChatException.class,
-                () -> service.chat(message)
+                () -> service.chat(USER_ID, message)
         );
 
         assertEquals("AI assistant is temporarily unavailable", exception.getMessage());
@@ -156,14 +165,15 @@ class AiChatServiceImplTest {
         AiChatService service = service();
         String message = "phim không tồn tại";
         MovieSearchPlan plan = searchPlan(message);
-        when(queryAnalyzer.analyze(message)).thenReturn(new ChatQueryPlan(
+        memoryIsEmpty();
+        when(queryAnalyzer.analyze(message, "")).thenReturn(new ChatQueryPlan(
                 ChatIntent.MOVIE_SEARCH, 0.7, plan
         ));
         when(hybridMovieRetriever.search(plan)).thenReturn(List.of());
         when(movieReranker.rerank(message, plan, List.of()))
                 .thenReturn(List.of());
 
-        ChatResponse response = service.chat(message);
+        ChatResponse response = service.chat(USER_ID, message);
 
         assertEquals(
                 "Mình chưa tìm thấy phim phù hợp trong dữ liệu CinemaBooking.",
@@ -178,8 +188,14 @@ class AiChatServiceImplTest {
                 queryAnalyzer,
                 hybridMovieRetriever,
                 movieReranker,
-                cinemaBookingTools
+                cinemaBookingTools,
+                conversationMemoryService
         );
+    }
+
+    private void memoryIsEmpty() {
+        when(conversationMemoryService.load(USER_ID))
+                .thenReturn(ConversationMemoryContext.empty());
     }
 
     private MovieSearchPlan searchPlan(String query) {

@@ -72,11 +72,11 @@ public class ChatQueryAnalyzerImpl implements ChatQueryAnalyzer {
     );
 
     @Override
-    public ChatQueryPlan analyze(String message) {
+    public ChatQueryPlan analyze(String message, String conversationMemory) {
         try {
             ChatQueryPlan result = chatClient.prompt()
                     .system(SYSTEM_PROMPT)
-                    .user(message)
+                    .user(contextualUserMessage(message, conversationMemory))
                     .call()
                     .entity(ChatQueryPlan.class, spec -> spec.validateSchema());
             return normalize(result, message);
@@ -87,6 +87,18 @@ public class ChatQueryAnalyzerImpl implements ChatQueryAnalyzer {
             );
             return fallback(message);
         }
+    }
+
+    private String contextualUserMessage(
+            String message,
+            String conversationMemory
+    ) {
+        if (conversationMemory == null || conversationMemory.isBlank()) {
+            return message;
+        }
+        return conversationMemory
+                + "\n\nCURRENT USER MESSAGE:\n"
+                + message;
     }
 
     private ChatQueryPlan normalize(ChatQueryPlan plan, String message) {

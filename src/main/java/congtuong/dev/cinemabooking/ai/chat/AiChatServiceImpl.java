@@ -3,6 +3,8 @@ package congtuong.dev.cinemabooking.ai.chat;
 import congtuong.dev.cinemabooking.ai.chat.dto.ChatResponse;
 import congtuong.dev.cinemabooking.ai.chat.dto.MovieSourceResponse;
 import congtuong.dev.cinemabooking.ai.chat.exception.AiChatException;
+import congtuong.dev.cinemabooking.ai.memory.ConversationMemoryContext;
+import congtuong.dev.cinemabooking.ai.memory.ConversationMemoryService;
 import congtuong.dev.cinemabooking.ai.query.ChatIntent;
 import congtuong.dev.cinemabooking.ai.query.ChatQueryAnalyzer;
 import congtuong.dev.cinemabooking.ai.query.ChatQueryPlan;
@@ -19,6 +21,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -64,66 +67,17 @@ public class AiChatServiceImpl implements AiChatService {
     private final HybridMovieRetriever hybridMovieRetriever;
     private final MovieReranker movieReranker;
     private final CinemaBookingTools cinemaBookingTools;
+    private final ConversationMemoryService conversationMemoryService;
 
     @Override
-    public ChatResponse chat(String message) {
+    public ChatResponse chat(UUID userId, String message) {
         try {
-            ChatQueryPlan plan = queryAnalyzer.analyze(message);
-            if (plan.intent() == ChatIntent.LIVE_DATA) {
-                return chatWithTools(message);
-            }
-            ChatResponse directResponse = directResponse(plan.intent());
-            if (directResponse != null) {
-                return directResponse;
-            }
-
-            List<MovieCandidate> candidates = hybridMovieRetriever.search(
-                    plan.movieSearch()
+            ConversationMemoryContext memory = conversationMemoryService.load(userId);
+            ChatResponse response = doChat(message, memory.render());
+            conversationMemoryService.recordSuccessfulExchange(
+                    userId, message, response.message()
             );
-            List<RankedMovie> results = movieReranker.rerank(
-                    message,
-                    plan.movieSearch(),
-                    candidates
-            );
-            if (results.isEmpty()) {
-                return new ChatResponse(NO_RESULT_MESSAGE);
-            }
-
-            String context = results.stream()
-                    .map(result -> """
-                            [Movie ID: %s]
-                            %s
-                            Retrieval reason: %s
-                            """.formatted(
-                            result.movieId(),
-                            result.content(),
-                            result.reason()
-                    ).strip())
-                    .collect(Collectors.joining("\n\n---\n\n"));
-
-            String answer = chatClient.prompt()
-                    .system(SYSTEM_PROMPT
-                            + "\nCurrent date: " + LocalDate.now()
-                            + "\n\nCINEMABOOKING MOVIE DATA:\n" + context)
-                    .user(message)
-                    .options(OpenAiChatOptions.builder().reasoningEffort("none"))
-                    .tools(cinemaBookingTools)
-                    .call()
-                    .content();
-
-            if (answer == null || answer.isBlank()) {
-                throw new AiChatException(
-                        "AI provider returned an empty response"
-                );
-            }
-            List<MovieSourceResponse> sources = results.stream()
-                    .map(result -> new MovieSourceResponse(
-                            result.movieId(),
-                            result.title(),
-                            result.relevanceScore()
-                    ))
-                    .toList();
-            return new ChatResponse(answer, sources);
+            return response;
         } catch (AiChatException exception) {
             throw exception;
         } catch (RuntimeException exception) {
@@ -140,9 +94,76 @@ public class AiChatServiceImpl implements AiChatService {
         }
     }
 
-    private ChatResponse chatWithTools(String message) {
+    private ChatResponse doChat(String message, String conversationMemory) {
+        ChatQueryPlan plan = queryAnalyzer.analyze(
+                message, conversationMemory
+        );
+        if (plan.intent() == ChatIntent.LIVE_DATA) {
+            return chatWithTools(message, conversationMemory);
+        }
+        ChatResponse directResponse = directResponse(plan.intent());
+        if (directResponse != null) {
+            return directResponse;
+        }
+
+        List<MovieCandidate> candidates = hybridMovieRetriever.search(
+                plan.movieSearch()
+        );
+        List<RankedMovie> results = movieReranker.rerank(
+                message,
+                plan.movieSearch(),
+                candidates
+        );
+        if (results.isEmpty()) {
+            return new ChatResponse(NO_RESULT_MESSAGE);
+        }
+
+        String context = results.stream()
+                    .map(result -> """
+                            [Movie ID: %s]
+                            %s
+                            Retrieval reason: %s
+                            """.formatted(
+                            result.movieId(),
+                            result.content(),
+                            result.reason()
+                    ).strip())
+                    .collect(Collectors.joining("\n\n---\n\n"));
+
         String answer = chatClient.prompt()
-                .system(TOOL_SYSTEM_PROMPT + "\nCurrent date: " + LocalDate.now())
+                    .system(SYSTEM_PROMPT
+                            + "\nCurrent date: " + LocalDate.now()
+                            + memoryBlock(conversationMemory)
+                            + "\n\nCINEMABOOKING MOVIE DATA:\n" + context)
+                    .user(message)
+                    .options(OpenAiChatOptions.builder().reasoningEffort("none"))
+                    .tools(cinemaBookingTools)
+                    .call()
+                    .content();
+
+        if (answer == null || answer.isBlank()) {
+            throw new AiChatException(
+                    "AI provider returned an empty response"
+            );
+        }
+        List<MovieSourceResponse> sources = results.stream()
+                    .map(result -> new MovieSourceResponse(
+                            result.movieId(),
+                            result.title(),
+                            result.relevanceScore()
+                    ))
+                    .toList();
+        return new ChatResponse(answer, sources);
+    }
+
+    private ChatResponse chatWithTools(
+            String message,
+            String conversationMemory
+    ) {
+        String answer = chatClient.prompt()
+                .system(TOOL_SYSTEM_PROMPT
+                        + "\nCurrent date: " + LocalDate.now()
+                        + memoryBlock(conversationMemory))
                 .user(message)
                 .options(OpenAiChatOptions.builder().reasoningEffort("none"))
                 .tools(cinemaBookingTools)
@@ -152,6 +173,12 @@ public class AiChatServiceImpl implements AiChatService {
             throw new AiChatException("AI provider returned an empty response");
         }
         return new ChatResponse(answer);
+    }
+
+    private String memoryBlock(String conversationMemory) {
+        return conversationMemory == null || conversationMemory.isBlank()
+                ? ""
+                : "\n\n" + conversationMemory;
     }
 
     private ChatResponse directResponse(ChatIntent intent) {

@@ -34,6 +34,7 @@ class AiChatLiveTest {
     @Test
     void returnsARealOpenAiResponse() {
         ChatResponse response = aiChatService.chat(
+                java.util.UUID.randomUUID(),
                 "Reply with exactly: CINEMA_AI_OK"
         );
 

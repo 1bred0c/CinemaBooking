@@ -14,8 +14,14 @@ import java.util.List;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Collection;
 
 public interface BookingRepository extends JpaRepository<Booking, UUID> {
+
+    Optional<Booking> findFirstByUserIdAndStatusInOrderByCreatedAtDesc(
+            UUID userId,
+            Collection<BookingStatus> statuses
+    );
 
     List<Booking>
     findTop100ByStatusAndPaymentExpiresAtBeforeOrderByPaymentExpiresAtAsc(

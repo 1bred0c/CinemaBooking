@@ -59,6 +59,28 @@ public class BookingController {
         );
     }
 
+    @GetMapping("/by-hold/{holdId}")
+    public ResponseEntity<BookingResponse> getBookingByHold(
+            @PathVariable UUID holdId,
+            @AuthenticationPrincipal CustomUserDetails currentUser
+    ) {
+        return ResponseEntity.ok(bookingService.getBookingByHold(
+                currentUser.getUser().getId(),
+                holdId
+        ));
+    }
+
+    @GetMapping("/current")
+    public ResponseEntity<BookingResponse> getCurrentCheckoutBooking(
+            @AuthenticationPrincipal CustomUserDetails currentUser
+    ) {
+        return ResponseEntity.ok(
+                bookingService.getCurrentCheckoutBooking(
+                        currentUser.getUser().getId()
+                )
+        );
+    }
+
     @GetMapping
     public ResponseEntity<Page<BookingSummaryResponse>> getUserBookings(
             @AuthenticationPrincipal CustomUserDetails currentUser,

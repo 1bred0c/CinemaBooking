@@ -63,6 +63,12 @@ public class BookingServiceImpl implements BookingService {
         ShowSeatHold currentHold = showSeatHoldRepository
                 .findByIdAndUserIdForUpdate(request.holdId(), currentUserId)
                 .orElseThrow(() -> new BookingException("Hold not found"));
+
+        var existingBooking = bookingRepository.findByHoldId(request.holdId());
+        if (existingBooking.isPresent()) {
+            return getBookingByHold(currentUserId, request.holdId());
+        }
+
         if (currentHold.getStatus() != ShowSeatHoldStatus.ACTIVE) {
             throw new BookingException(
                     HttpStatus.CONFLICT,
@@ -75,13 +81,6 @@ public class BookingServiceImpl implements BookingService {
             throw new BookingException(
                     HttpStatus.CONFLICT,
                     "Hold has expired"
-            );
-        }
-
-        if (bookingRepository.existsByHoldId(request.holdId())) {
-            throw new BookingException(
-                    HttpStatus.CONFLICT,
-                    "Booking already exists for this hold"
             );
         }
 
@@ -168,6 +167,34 @@ public class BookingServiceImpl implements BookingService {
         return bookingMapper.toResponse(
                 booking,
                 bookingItemRepository.findAllByBookingId(bookingId)
+        );
+    }
+
+    @Override
+    public BookingResponse getBookingByHold(
+            UUID currentUserId,
+            UUID holdId
+    ) {
+        Booking booking = bookingRepository.findByHoldId(holdId)
+                .filter(found -> found.getUser().getId().equals(currentUserId))
+                .orElseThrow(() -> new BookingException("Booking not found"));
+        return bookingMapper.toResponse(
+                booking,
+                bookingItemRepository.findAllByBookingId(booking.getId())
+        );
+    }
+
+    @Override
+    public BookingResponse getCurrentCheckoutBooking(UUID currentUserId) {
+        Booking booking = bookingRepository
+                .findFirstByUserIdAndStatusInOrderByCreatedAtDesc(
+                        currentUserId,
+                        List.of(BookingStatus.PENDING_PAYMENT)
+                )
+                .orElseThrow(() -> new BookingException("Active checkout not found"));
+        return bookingMapper.toResponse(
+                booking,
+                bookingItemRepository.findAllByBookingId(booking.getId())
         );
     }
 

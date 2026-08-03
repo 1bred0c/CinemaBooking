@@ -2,6 +2,7 @@ package congtuong.dev.cinemabooking.controller;
 
 import congtuong.dev.cinemabooking.dto.request.MovieCreateRequest;
 import congtuong.dev.cinemabooking.dto.request.MovieUpdateRequest;
+import congtuong.dev.cinemabooking.dto.request.MovieFilterRequest;
 import congtuong.dev.cinemabooking.dto.response.MovieResponse;
 import congtuong.dev.cinemabooking.dto.response.ShowtimeBrowseResponse;
 import congtuong.dev.cinemabooking.dto.response.MoviePosterResponse;
@@ -32,13 +33,14 @@ public class MovieController {
 
     @GetMapping
     public Page<MovieResponse> getMovies(
+            @ModelAttribute MovieFilterRequest filter,
             @PageableDefault(
                     size = 20,
                     sort = "title",
                     direction = Sort.Direction.ASC
             ) Pageable pageable
     ) {
-        return movieService.getMovies(pageable);
+        return movieService.getMovies(filter, pageable);
     }
 
     @GetMapping("/now-showing")

@@ -128,8 +128,10 @@ public interface ShowtimeRepository extends JpaRepository<ShowTime, UUID> {
             value = """
             select s from ShowTime s
             join fetch s.movie
-            join fetch s.room
+            join fetch s.room r
+            join fetch r.cinema c
             where (:movieId is null or s.movie.id = :movieId)
+              and (:cinemaId is null or c.id = :cinemaId)
               and (:roomId is null or s.room.id = :roomId)
               and (:startTimeFrom is null or s.startTime >= :startTimeFrom)
               and (:startTimeTo is null or s.startTime <= :startTimeTo)
@@ -139,6 +141,7 @@ public interface ShowtimeRepository extends JpaRepository<ShowTime, UUID> {
             countQuery = """
             select count(s) from ShowTime s
             where (:movieId is null or s.movie.id = :movieId)
+              and (:cinemaId is null or s.room.cinema.id = :cinemaId)
               and (:roomId is null or s.room.id = :roomId)
               and (:startTimeFrom is null or s.startTime >= :startTimeFrom)
               and (:startTimeTo is null or s.startTime <= :startTimeTo)
@@ -148,6 +151,7 @@ public interface ShowtimeRepository extends JpaRepository<ShowTime, UUID> {
     )
     Page<ShowTime> findAllByFilter(
             @Param("movieId") UUID movieId,
+            @Param("cinemaId") UUID cinemaId,
             @Param("roomId") UUID roomId,
             @Param("startTimeFrom") LocalDateTime startTimeFrom,
             @Param("startTimeTo") LocalDateTime startTimeTo,

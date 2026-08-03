@@ -2,6 +2,7 @@ package congtuong.dev.cinemabooking.repository;
 
 import congtuong.dev.cinemabooking.entity.Movie;
 import congtuong.dev.cinemabooking.entity.enums.ShowtimeStatus;
+import congtuong.dev.cinemabooking.entity.enums.AgeRating;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
@@ -16,6 +17,38 @@ import java.util.Optional;
 import java.util.Collection;
 
 public interface MovieRepository extends JpaRepository<Movie, UUID> {
+
+    @Query(
+            value = """
+                    select m from Movie m
+                    where (:keyword is null
+                           or lower(m.title) like lower(concat('%', :keyword, '%'))
+                           or lower(m.director) like lower(concat('%', :keyword, '%')))
+                      and (:genreId is null or exists (
+                           select g.id from m.genres g where g.id = :genreId
+                      ))
+                      and (:ageRating is null or m.ageRating = :ageRating)
+                      and (:active is null or m.active = :active)
+                    """,
+            countQuery = """
+                    select count(m) from Movie m
+                    where (:keyword is null
+                           or lower(m.title) like lower(concat('%', :keyword, '%'))
+                           or lower(m.director) like lower(concat('%', :keyword, '%')))
+                      and (:genreId is null or exists (
+                           select g.id from m.genres g where g.id = :genreId
+                      ))
+                      and (:ageRating is null or m.ageRating = :ageRating)
+                      and (:active is null or m.active = :active)
+                    """
+    )
+    Page<Movie> findAllByFilter(
+            @Param("keyword") String keyword,
+            @Param("genreId") UUID genreId,
+            @Param("ageRating") AgeRating ageRating,
+            @Param("active") Boolean active,
+            Pageable pageable
+    );
 
     @EntityGraph(attributePaths = "genres")
     Optional<Movie> findWithGenresById(UUID id);

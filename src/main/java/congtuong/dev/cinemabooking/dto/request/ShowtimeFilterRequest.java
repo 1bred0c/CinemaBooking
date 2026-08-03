@@ -7,6 +7,7 @@ import java.util.UUID;
 
 public record ShowtimeFilterRequest(
         UUID movieId,
+        UUID cinemaId,
         UUID roomId,
         LocalDateTime startTimeFrom,
         LocalDateTime startTimeTo,

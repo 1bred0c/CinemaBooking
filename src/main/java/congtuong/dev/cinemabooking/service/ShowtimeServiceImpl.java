@@ -83,10 +83,11 @@ public class ShowtimeServiceImpl implements ShowtimeService {
             Pageable pageable
     ) {
         ShowtimeFilterRequest appliedFilter = filter == null
-                ? new ShowtimeFilterRequest(null, null, null, null, null, null)
+                ? new ShowtimeFilterRequest(null, null, null, null, null, null, null)
                 : filter;
         return showtimeRepository.findAllByFilter(
                         appliedFilter.movieId(),
+                        appliedFilter.cinemaId(),
                         appliedFilter.roomId(),
                         appliedFilter.startTimeFrom(),
                         appliedFilter.startTimeTo(),

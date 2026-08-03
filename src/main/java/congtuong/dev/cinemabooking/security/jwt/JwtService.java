@@ -2,6 +2,7 @@ package congtuong.dev.cinemabooking.security.jwt;
 
 import congtuong.dev.cinemabooking.entity.enums.Role;
 import congtuong.dev.cinemabooking.entity.User;
+import congtuong.dev.cinemabooking.entity.Booking;
 import io.jsonwebtoken.Claims;
 
 import java.time.Instant;
@@ -21,4 +22,6 @@ public interface JwtService {
     Role extractRole(String token);
 
     long extractSecurityVersion(String token);
+    String generateTicketToken(Booking booking);
+    UUID extractTicketBookingId(String token);
 }

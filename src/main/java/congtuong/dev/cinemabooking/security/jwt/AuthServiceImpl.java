@@ -5,6 +5,9 @@ import congtuong.dev.cinemabooking.dto.request.LogoutRequest;
 import congtuong.dev.cinemabooking.dto.request.RefreshTokenRequest;
 import congtuong.dev.cinemabooking.dto.request.RegisterRequest;
 import congtuong.dev.cinemabooking.dto.request.ChangePasswordRequest;
+import congtuong.dev.cinemabooking.dto.request.ForgotPasswordRequest;
+import congtuong.dev.cinemabooking.dto.request.ResetPasswordRequest;
+import congtuong.dev.cinemabooking.dto.request.UpdateProfileRequest;
 import congtuong.dev.cinemabooking.dto.response.LoginResponse;
 import congtuong.dev.cinemabooking.dto.response.RefreshTokenResponse;
 import congtuong.dev.cinemabooking.dto.response.UserRespone;
@@ -18,6 +21,7 @@ import congtuong.dev.cinemabooking.exception.UserSecurityException;
 import congtuong.dev.cinemabooking.messaging.event.UserRegisteredEvent;
 import congtuong.dev.cinemabooking.repository.UserRepository;
 import congtuong.dev.cinemabooking.service.OutboxEventService;
+import congtuong.dev.cinemabooking.notification.WelcomeEmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -32,6 +36,7 @@ import org.springframework.http.HttpStatus;
 
 import java.util.Locale;
 import java.util.UUID;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -44,6 +49,8 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenService refreshTokenService;
     private final OutboxEventService outboxEventService;
     private final SecurityStateService securityStateService;
+    private final PasswordResetTokenService passwordResetTokenService;
+    private final WelcomeEmailService welcomeEmailService;
 
     @Override
     @Transactional
@@ -118,6 +125,84 @@ public class AuthServiceImpl implements AuthService {
                 .orElseThrow(() ->
                         new UserNotFoundException("User not found")
                 );
+        return toProfile(user);
+    }
+
+    @Override
+    @Transactional
+    public MyProfileResponse updateProfile(
+            UUID currentUserId,
+            UpdateProfileRequest request
+    ) {
+        User user = userRepository.findByIdForUpdate(currentUserId)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+        if (request.fullname() != null) {
+            user.setFullname(request.fullname().trim());
+        }
+        if (request.birthDate() != null) {
+            user.setBirthDate(request.birthDate());
+        }
+        if (request.email() != null) {
+            String email = request.email().trim().toLowerCase(Locale.ROOT);
+            if (!Objects.equals(email, user.getEmail())
+                    && userRepository.existsByEmailIgnoreCase(email)) {
+                throw new UserAlreadyExistException("Email already exists");
+            }
+            user.setEmail(email);
+        }
+        return toProfile(user);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public void forgotPassword(ForgotPasswordRequest request) {
+        userRepository.findByEmailIgnoreCase(
+                        request.email().trim().toLowerCase(Locale.ROOT)
+                )
+                .filter(User::isActive)
+                .ifPresent(user -> welcomeEmailService.sendPasswordResetEmail(
+                        user.getEmail(),
+                        passwordResetTokenService.issue(user.getId())
+                ));
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(ResetPasswordRequest request) {
+        UUID userId = passwordResetTokenService.consume(request.token());
+        String operationId;
+        try {
+            operationId = securityStateService.beginTransition(userId);
+        } catch (RuntimeException exception) {
+            throw new UserSecurityException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Security service is temporarily unavailable"
+            );
+        }
+        boolean completionRegistered = false;
+        try {
+            User user = userRepository.findByIdForUpdate(userId)
+                    .orElseThrow(() -> new UserNotFoundException("User not found"));
+            if (!user.isActive()) {
+                throw new UserSecurityException(HttpStatus.FORBIDDEN, "User account is inactive");
+            }
+            user.setPassword(passwordEncoder.encode(request.newPassword()));
+            user.setSecurityVersion(user.getSecurityVersion() + 1L);
+            refreshTokenService.revokeAllForUser(userId);
+            registerTransitionCompletion(
+                    userId,
+                    operationId,
+                    new SecurityState(true, user.getSecurityVersion())
+            );
+            completionRegistered = true;
+        } finally {
+            if (!completionRegistered) {
+                securityStateService.cancelTransition(userId, operationId);
+            }
+        }
+    }
+
+    private MyProfileResponse toProfile(User user) {
         return new MyProfileResponse(
                 user.getId(),
                 user.getPhoneNumber(),

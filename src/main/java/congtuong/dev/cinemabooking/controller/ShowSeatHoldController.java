@@ -42,6 +42,17 @@ public class ShowSeatHoldController {
         );
     }
 
+    @GetMapping("/active")
+    public ShowSeatHoldResponse getActiveHold(
+            @RequestParam(required = false) UUID showtimeId,
+            @AuthenticationPrincipal CustomUserDetails currentUser
+    ) {
+        return showSeatHoldService.getActiveHold(
+                currentUser.getUser().getId(),
+                showtimeId
+        );
+    }
+
     @DeleteMapping("/{holdId}")
     public ResponseEntity<Void> cancelHold(
             @PathVariable UUID holdId,

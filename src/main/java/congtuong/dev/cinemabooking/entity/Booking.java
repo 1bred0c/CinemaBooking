@@ -88,6 +88,12 @@ public class Booking {
     @Column(name = "cancelled_at")
     private Instant cancelledAt;
 
+    @Column(name = "booking_code", unique = true, length = 32)
+    private String bookingCode;
+
+    @Column(name = "checked_in_at")
+    private Instant checkedInAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -101,6 +107,12 @@ public class Booking {
         updatedAt = now;
         if (status == null) {
             status = BookingStatus.PENDING_PAYMENT;
+        }
+        if (bookingCode == null) {
+            bookingCode = "CB-" + UUID.randomUUID().toString()
+                    .replace("-", "")
+                    .substring(0, 12)
+                    .toUpperCase();
         }
     }
 

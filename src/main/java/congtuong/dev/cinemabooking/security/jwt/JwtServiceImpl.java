@@ -2,6 +2,7 @@ package congtuong.dev.cinemabooking.security.jwt;
 
 import congtuong.dev.cinemabooking.entity.enums.Role;
 import congtuong.dev.cinemabooking.entity.User;
+import congtuong.dev.cinemabooking.entity.Booking;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtParser;
 import io.jsonwebtoken.JwtParserBuilder;
@@ -83,5 +84,33 @@ public class JwtServiceImpl implements JwtService {
             throw new IllegalArgumentException("Token has no security version");
         }
         return version.longValue();
+    }
+
+    @Override
+    public String generateTicketToken(Booking booking) {
+        Instant now = Instant.now();
+        Instant expiration = booking.getShowtime().getEndTime()
+                .atZone(java.time.ZoneId.systemDefault())
+                .toInstant()
+                .plus(java.time.Duration.ofHours(6));
+        return Jwts.builder()
+                .subject(booking.getId().toString())
+                .claim("type", "ticket")
+                .claim("code", booking.getBookingCode())
+                .issuedAt(Date.from(now))
+                .expiration(Date.from(expiration.isAfter(now)
+                        ? expiration
+                        : now.plus(java.time.Duration.ofMinutes(5))))
+                .signWith(secretKey)
+                .compact();
+    }
+
+    @Override
+    public UUID extractTicketBookingId(String token) {
+        Claims claims = parseToken(token);
+        if (!"ticket".equals(claims.get("type", String.class))) {
+            throw new IllegalArgumentException("Invalid ticket token");
+        }
+        return UUID.fromString(claims.getSubject());
     }
 }

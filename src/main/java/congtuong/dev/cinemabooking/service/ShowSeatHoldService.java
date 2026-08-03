@@ -8,6 +8,7 @@ import java.util.UUID;
 public interface ShowSeatHoldService {
     ShowSeatHoldResponse createHold(ShowSeatHoldCreateRequest request, UUID currentUserId);
     ShowSeatHoldResponse getMyHold(UUID holdId, UUID currentUserId);
+    ShowSeatHoldResponse getActiveHold(UUID currentUserId, UUID showtimeId);
     void cancelHold(UUID holdId, UUID currentUserId);
     int expireActiveHolds();
 }

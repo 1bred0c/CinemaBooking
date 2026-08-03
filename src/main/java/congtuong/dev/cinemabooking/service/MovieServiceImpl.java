@@ -4,6 +4,7 @@ import congtuong.dev.cinemabooking.ai.indexing.MovieIndexAction;
 import congtuong.dev.cinemabooking.ai.indexing.MovieIndexRequested;
 import congtuong.dev.cinemabooking.dto.request.MovieCreateRequest;
 import congtuong.dev.cinemabooking.dto.request.MovieUpdateRequest;
+import congtuong.dev.cinemabooking.dto.request.MovieFilterRequest;
 import congtuong.dev.cinemabooking.dto.response.GenreSummaryResponse;
 import congtuong.dev.cinemabooking.dto.response.MovieResponse;
 import congtuong.dev.cinemabooking.dto.response.MoviePosterResponse;
@@ -45,8 +46,20 @@ public class MovieServiceImpl implements MovieService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
-    public Page<MovieResponse> getMovies(Pageable pageable) {
-        Page<Movie> page = movieRepository.findAll(pageable);
+    public Page<MovieResponse> getMovies(
+            MovieFilterRequest filter,
+            Pageable pageable
+    ) {
+        MovieFilterRequest applied = filter == null
+                ? new MovieFilterRequest(null, null, null, null)
+                : filter;
+        Page<Movie> page = movieRepository.findAllByFilter(
+                applied.keyword(),
+                applied.genreId(),
+                applied.ageRating(),
+                applied.active(),
+                pageable
+        );
         return mapPageWithGenres(
                 page,
                 movieRepository.findAllByIdIn(pageIds(page))

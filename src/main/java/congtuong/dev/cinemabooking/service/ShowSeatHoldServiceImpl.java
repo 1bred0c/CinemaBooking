@@ -34,6 +34,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.data.domain.PageRequest;
 
 @Service
 @RequiredArgsConstructor
@@ -125,6 +126,30 @@ public class ShowSeatHoldServiceImpl implements ShowSeatHoldService {
         List<ShowSeatHoldItem> items =
                 showSeatHoldItemRepository.findAllByShowSeatHoldId(holdId);
         return toResponse(hold, items);
+    }
+
+    @Override
+    public ShowSeatHoldResponse getActiveHold(
+            UUID currentUserId,
+            UUID showtimeId
+    ) {
+        ShowSeatHold hold = showSeatHoldRepository.findLatestActiveByUser(
+                        currentUserId,
+                        showtimeId,
+                        ShowSeatHoldStatus.ACTIVE,
+                        Instant.now(),
+                        PageRequest.of(0, 1)
+                )
+                .stream()
+                .findFirst()
+                .orElseThrow(() -> new ShowSeatHoldException(
+                    HttpStatus.NOT_FOUND,
+                    "Active hold not found"
+                ));
+        return toResponse(
+                hold,
+                showSeatHoldItemRepository.findAllByShowSeatHoldId(hold.getId())
+        );
     }
 
     @Override

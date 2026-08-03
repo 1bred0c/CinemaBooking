@@ -31,4 +31,20 @@ public class WelcomeEmailServiceImpl implements WelcomeEmailService {
 
         mailSender.send(message);
     }
+
+    @Override
+    public void sendPasswordResetEmail(String recipient, String token) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(mailProperties.from());
+        message.setTo(recipient);
+        message.setSubject("Reset your CinemaBooking password");
+        message.setText("""
+                Use the token below to reset your password. It expires in 15 minutes.
+
+                %s
+
+                If you did not request this change, ignore this email.
+                """.formatted(token));
+        mailSender.send(message);
+    }
 }

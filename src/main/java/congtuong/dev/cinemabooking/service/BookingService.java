@@ -18,6 +18,8 @@ public interface BookingService {
     );
 
     BookingResponse getBooking(UUID currentUserId, UUID bookingId);
+    BookingResponse getBookingByHold(UUID currentUserId, UUID holdId);
+    BookingResponse getCurrentCheckoutBooking(UUID currentUserId);
 
     Page<BookingSummaryResponse> getUserBookings(
             UUID currentUserId,

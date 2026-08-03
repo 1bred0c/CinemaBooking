@@ -5,6 +5,9 @@ import congtuong.dev.cinemabooking.dto.request.LogoutRequest;
 import congtuong.dev.cinemabooking.dto.request.RefreshTokenRequest;
 import congtuong.dev.cinemabooking.dto.request.RegisterRequest;
 import congtuong.dev.cinemabooking.dto.request.ChangePasswordRequest;
+import congtuong.dev.cinemabooking.dto.request.ForgotPasswordRequest;
+import congtuong.dev.cinemabooking.dto.request.ResetPasswordRequest;
+import congtuong.dev.cinemabooking.dto.request.UpdateProfileRequest;
 import congtuong.dev.cinemabooking.dto.response.LoginResponse;
 import congtuong.dev.cinemabooking.dto.response.RefreshTokenResponse;
 import congtuong.dev.cinemabooking.dto.response.UserRespone;
@@ -67,6 +70,33 @@ public class AuthController {
     ) {
         authService.changePassword(currentUser.getUser().getId(), request);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<Void> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request
+    ) {
+        authService.forgotPassword(request);
+        return ResponseEntity.accepted().build();
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<Void> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request
+    ) {
+        authService.resetPassword(request);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PatchMapping("/my-profile")
+    public ResponseEntity<MyProfileResponse> updateProfile(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @Valid @RequestBody UpdateProfileRequest request
+    ) {
+        return ResponseEntity.ok(authService.updateProfile(
+                currentUser.getUser().getId(),
+                request
+        ));
     }
 
 }

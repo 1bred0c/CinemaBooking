@@ -5,6 +5,9 @@ import congtuong.dev.cinemabooking.dto.request.LogoutRequest;
 import congtuong.dev.cinemabooking.dto.request.RefreshTokenRequest;
 import congtuong.dev.cinemabooking.dto.request.RegisterRequest;
 import congtuong.dev.cinemabooking.dto.request.ChangePasswordRequest;
+import congtuong.dev.cinemabooking.dto.request.ForgotPasswordRequest;
+import congtuong.dev.cinemabooking.dto.request.ResetPasswordRequest;
+import congtuong.dev.cinemabooking.dto.request.UpdateProfileRequest;
 import congtuong.dev.cinemabooking.dto.response.LoginResponse;
 import congtuong.dev.cinemabooking.dto.response.RefreshTokenResponse;
 import congtuong.dev.cinemabooking.dto.response.UserRespone;
@@ -19,4 +22,7 @@ public interface AuthService {
     void logout (LogoutRequest logoutRequest);
     MyProfileResponse getMyProfile(UUID currentUserId);
     void changePassword(UUID currentUserId, ChangePasswordRequest request);
+    void forgotPassword(ForgotPasswordRequest request);
+    void resetPassword(ResetPasswordRequest request);
+    MyProfileResponse updateProfile(UUID currentUserId, UpdateProfileRequest request);
 }

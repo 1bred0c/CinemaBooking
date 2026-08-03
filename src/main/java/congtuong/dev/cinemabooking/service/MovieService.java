@@ -2,6 +2,7 @@ package congtuong.dev.cinemabooking.service;
 
 import congtuong.dev.cinemabooking.dto.request.MovieCreateRequest;
 import congtuong.dev.cinemabooking.dto.request.MovieUpdateRequest;
+import congtuong.dev.cinemabooking.dto.request.MovieFilterRequest;
 import congtuong.dev.cinemabooking.dto.response.MovieResponse;
 import congtuong.dev.cinemabooking.dto.response.MoviePosterResponse;
 import org.springframework.web.multipart.MultipartFile;
@@ -11,7 +12,7 @@ import org.springframework.data.domain.Pageable;
 import java.util.UUID;
 
 public interface MovieService {
-    Page<MovieResponse> getMovies(Pageable pageable);
+    Page<MovieResponse> getMovies(MovieFilterRequest filter, Pageable pageable);
     Page<MovieResponse> getNowShowingMovies(Pageable pageable);
     MovieResponse getMovie(UUID id);
     MovieResponse createMovie(MovieCreateRequest request);

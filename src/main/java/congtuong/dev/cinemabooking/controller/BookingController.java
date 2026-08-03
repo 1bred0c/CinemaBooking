@@ -20,8 +20,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.domain.Sort;
 
-import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -57,22 +60,36 @@ public class BookingController {
     }
 
     @GetMapping
-    public ResponseEntity<List<BookingSummaryResponse>> getUserBookings(
-            @AuthenticationPrincipal CustomUserDetails currentUser
+    public ResponseEntity<Page<BookingSummaryResponse>> getUserBookings(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @PageableDefault(
+                    size = 20,
+                    sort = "createdAt",
+                    direction = Sort.Direction.DESC
+            ) Pageable pageable
     ) {
         return ResponseEntity.ok(
-                bookingService.getUserBookings(currentUser.getUser().getId())
+                bookingService.getUserBookings(
+                        currentUser.getUser().getId(),
+                        pageable
+                )
         );
     }
 
     @GetMapping("/me")
-    public ResponseEntity<List<MyBookingResponse>> getMyBookings(
+    public ResponseEntity<Page<MyBookingResponse>> getMyBookings(
             @RequestParam(required = false) BookingStatus status,
-            @AuthenticationPrincipal CustomUserDetails currentUser
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @PageableDefault(
+                    size = 20,
+                    sort = "createdAt",
+                    direction = Sort.Direction.DESC
+            ) Pageable pageable
     ) {
         return ResponseEntity.ok(bookingService.getMyBookings(
                 currentUser.getUser().getId(),
-                status
+                status,
+                pageable
         ));
     }
 

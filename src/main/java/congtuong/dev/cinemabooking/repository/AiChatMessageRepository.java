@@ -20,5 +20,9 @@ public interface AiChatMessageRepository
             long sequence
     );
 
-    List<AiChatMessage> findByConversationIdOrderBySequence(UUID conversationId);
+    List<AiChatMessage> findByConversationIdAndSequenceLessThanOrderBySequenceDesc(
+            UUID conversationId,
+            long sequence,
+            Pageable pageable
+    );
 }

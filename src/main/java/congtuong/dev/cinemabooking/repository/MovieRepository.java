@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -24,9 +26,12 @@ public interface MovieRepository extends JpaRepository<Movie, UUID> {
     @EntityGraph(attributePaths = "genres")
     List<Movie> findAllByIdInAndActiveTrue(Collection<UUID> ids);
 
-    @Query("""
-            select distinct m from Movie m
-            left join fetch m.genres
+    @EntityGraph(attributePaths = "genres")
+    List<Movie> findAllByIdIn(Collection<UUID> ids);
+
+    @Query(
+            value = """
+            select m from Movie m
             where m.active = true
               and exists (
                   select st.id from ShowTime st
@@ -35,10 +40,22 @@ public interface MovieRepository extends JpaRepository<Movie, UUID> {
                     and st.status = :status
                     and st.startTime > :now
               )
-            order by m.releaseDate desc, m.title
-            """)
-    List<Movie> findNowShowing(
+            """,
+            countQuery = """
+            select count(m) from Movie m
+            where m.active = true
+              and exists (
+                  select st.id from ShowTime st
+                  where st.movie = m
+                    and st.active = true
+                    and st.status = :status
+                    and st.startTime > :now
+              )
+            """
+    )
+    Page<Movie> findNowShowing(
             @Param("status") ShowtimeStatus status,
-            @Param("now") LocalDateTime now
+            @Param("now") LocalDateTime now,
+            Pageable pageable
     );
 }

@@ -23,6 +23,9 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageImpl;
 
 import java.io.IOException;
 import java.util.List;
@@ -42,19 +45,25 @@ public class MovieServiceImpl implements MovieService {
     private final ApplicationEventPublisher eventPublisher;
 
     @Override
-    public List<MovieResponse> getMovies() {
-        return movieRepository.findAll().stream().map(this::toResponse).toList();
+    public Page<MovieResponse> getMovies(Pageable pageable) {
+        Page<Movie> page = movieRepository.findAll(pageable);
+        return mapPageWithGenres(
+                page,
+                movieRepository.findAllByIdIn(pageIds(page))
+        );
     }
 
     @Override
-    public List<MovieResponse> getNowShowingMovies() {
-        return movieRepository.findNowShowing(
+    public Page<MovieResponse> getNowShowingMovies(Pageable pageable) {
+        Page<Movie> page = movieRepository.findNowShowing(
                         ShowtimeStatus.SCHEDULED,
-                        LocalDateTime.now()
-                )
-                .stream()
-                .map(this::toResponse)
-                .toList();
+                        LocalDateTime.now(),
+                        pageable
+                );
+        return mapPageWithGenres(
+                page,
+                movieRepository.findAllByIdInAndActiveTrue(pageIds(page))
+        );
     }
 
     @Override
@@ -163,6 +172,26 @@ public class MovieServiceImpl implements MovieService {
     private Genre findGenre(UUID id) {
         return genreRepository.findById(id)
                 .orElseThrow(() -> new GenreException("Genre not found"));
+    }
+
+    private List<UUID> pageIds(Page<Movie> page) {
+        return page.getContent().stream().map(Movie::getId).toList();
+    }
+
+    private Page<MovieResponse> mapPageWithGenres(
+            Page<Movie> page,
+            List<Movie> moviesWithGenres
+    ) {
+        java.util.Map<UUID, Movie> byId = moviesWithGenres.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        Movie::getId,
+                        movie -> movie
+                ));
+        List<MovieResponse> content = page.getContent().stream()
+                .map(movie -> byId.getOrDefault(movie.getId(), movie))
+                .map(this::toResponse)
+                .toList();
+        return new PageImpl<>(content, page.getPageable(), page.getTotalElements());
     }
 
     private byte[] validateAndReadPoster(MultipartFile file) {

@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.List;
 import java.time.Instant;
@@ -62,17 +64,24 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
             @Param("userId") UUID userId
     );
 
-    @Query("""
-            select b from Booking b
-            join fetch b.showtime
-            where b.user.id = :userId
-            order by b.createdAt desc
-            """)
-    List<Booking> findAllByUserIdOrderByCreatedAtDesc(
-            @Param("userId") UUID userId
+    @Query(
+            value = """
+                    select b from Booking b
+                    join fetch b.showtime
+                    where b.user.id = :userId
+                    """,
+            countQuery = """
+                    select count(b) from Booking b
+                    where b.user.id = :userId
+                    """
+    )
+    Page<Booking> findAllByUserId(
+            @Param("userId") UUID userId,
+            Pageable pageable
     );
 
-    @Query("""
+    @Query(
+            value = """
             select b from Booking b
             join fetch b.showtime st
             join fetch st.movie
@@ -80,10 +89,16 @@ public interface BookingRepository extends JpaRepository<Booking, UUID> {
             join fetch r.cinema
             where b.user.id = :userId
               and (:status is null or b.status = :status)
-            order by b.createdAt desc
-            """)
-    List<Booking> findMyBookings(
+            """,
+            countQuery = """
+            select count(b) from Booking b
+            where b.user.id = :userId
+              and (:status is null or b.status = :status)
+            """
+    )
+    Page<Booking> findMyBookings(
             @Param("userId") UUID userId,
-            @Param("status") BookingStatus status
+            @Param("status") BookingStatus status,
+            Pageable pageable
     );
 }

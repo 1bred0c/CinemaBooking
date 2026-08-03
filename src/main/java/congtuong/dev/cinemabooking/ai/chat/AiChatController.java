@@ -13,10 +13,16 @@ import congtuong.dev.cinemabooking.ai.memory.dto.ChatHistoryResponse;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.validation.annotation.Validated;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.Positive;
 
 @RestController
 @RequestMapping("/api/v1/ai/chat")
 @RequiredArgsConstructor
+@Validated
 public class AiChatController {
 
     private final AiChatService aiChatService;
@@ -24,10 +30,15 @@ public class AiChatController {
 
     @GetMapping("/history")
     public ChatHistoryResponse history(
-            @AuthenticationPrincipal CustomUserDetails currentUser
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @RequestParam(required = false) @Positive Long beforeSequence,
+            @RequestParam(defaultValue = "30")
+            @Min(1) @Max(100) int limit
     ) {
         return conversationMemoryService.getHistory(
-                currentUser.getUser().getId()
+                currentUser.getUser().getId(),
+                beforeSequence,
+                limit
         );
     }
 

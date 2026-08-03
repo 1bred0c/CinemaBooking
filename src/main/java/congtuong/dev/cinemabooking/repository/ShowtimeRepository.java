@@ -6,6 +6,8 @@ import congtuong.dev.cinemabooking.entity.enums.RoomStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -122,7 +124,8 @@ public interface ShowtimeRepository extends JpaRepository<ShowTime, UUID> {
             @Param("roomStatus") RoomStatus roomStatus
     );
 
-    @Query("""
+    @Query(
+            value = """
             select s from ShowTime s
             join fetch s.movie
             join fetch s.room
@@ -132,15 +135,25 @@ public interface ShowtimeRepository extends JpaRepository<ShowTime, UUID> {
               and (:startTimeTo is null or s.startTime <= :startTimeTo)
               and (:status is null or s.status = :status)
               and (:active is null or s.active = :active)
-            order by s.startTime
-            """)
-    List<ShowTime> findAllByFilter(
+            """,
+            countQuery = """
+            select count(s) from ShowTime s
+            where (:movieId is null or s.movie.id = :movieId)
+              and (:roomId is null or s.room.id = :roomId)
+              and (:startTimeFrom is null or s.startTime >= :startTimeFrom)
+              and (:startTimeTo is null or s.startTime <= :startTimeTo)
+              and (:status is null or s.status = :status)
+              and (:active is null or s.active = :active)
+            """
+    )
+    Page<ShowTime> findAllByFilter(
             @Param("movieId") UUID movieId,
             @Param("roomId") UUID roomId,
             @Param("startTimeFrom") LocalDateTime startTimeFrom,
             @Param("startTimeTo") LocalDateTime startTimeTo,
             @Param("status") ShowtimeStatus status,
-            @Param("active") Boolean active
+            @Param("active") Boolean active,
+            Pageable pageable
     );
 
     @Query("""

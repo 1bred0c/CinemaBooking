@@ -15,6 +15,8 @@ import congtuong.dev.cinemabooking.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -76,7 +78,10 @@ public class ShowtimeServiceImpl implements ShowtimeService {
     }
 
     @Override
-    public List<ShowtimeResponse> getShowtimes(ShowtimeFilterRequest filter) {
+    public Page<ShowtimeResponse> getShowtimes(
+            ShowtimeFilterRequest filter,
+            Pageable pageable
+    ) {
         ShowtimeFilterRequest appliedFilter = filter == null
                 ? new ShowtimeFilterRequest(null, null, null, null, null, null)
                 : filter;
@@ -86,10 +91,9 @@ public class ShowtimeServiceImpl implements ShowtimeService {
                         appliedFilter.startTimeFrom(),
                         appliedFilter.startTimeTo(),
                         appliedFilter.status(),
-                        appliedFilter.active())
-                .stream()
-                .map(this::toResponse)
-                .toList();
+                        appliedFilter.active(),
+                        pageable)
+                .map(this::toResponse);
     }
 
     @Override

@@ -10,6 +10,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 
 import java.util.List;
 import java.util.UUID;
@@ -21,8 +25,15 @@ public class ShowtimeController {
     private final ShowtimeService showtimeService;
 
     @GetMapping
-    public List<ShowtimeResponse> getShowtimes(@ModelAttribute ShowtimeFilterRequest filter) {
-        return showtimeService.getShowtimes(filter);
+    public Page<ShowtimeResponse> getShowtimes(
+            @ModelAttribute ShowtimeFilterRequest filter,
+            @PageableDefault(
+                    size = 20,
+                    sort = "startTime",
+                    direction = Sort.Direction.ASC
+            ) Pageable pageable
+    ) {
+        return showtimeService.getShowtimes(filter, pageable);
     }
 
     @GetMapping("/{showtimeId}")

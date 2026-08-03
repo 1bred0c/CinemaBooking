@@ -34,24 +34,55 @@ public class ConversationMemoryPersistenceService {
                 .orElseGet(ConversationMemoryContext::empty);
     }
 
-    public ChatHistoryResponse getHistory(UUID userId) {
+    public ChatHistoryResponse getHistory(
+            UUID userId,
+            Long beforeSequence,
+            int limit
+    ) {
         return conversationRepository.findByUserId(userId)
-                .map(conversation -> new ChatHistoryResponse(
-                        conversation.getId(),
-                        messageRepository
-                                .findByConversationIdOrderBySequence(
-                                        conversation.getId()
-                                )
-                                .stream()
-                                .map(message -> new ChatHistoryMessageResponse(
-                                        message.getId(),
-                                        message.getRole(),
-                                        message.getContent(),
-                                        message.getCreatedAt()
-                                ))
-                                .toList()
+                .map(conversation -> historyPage(
+                        conversation,
+                        beforeSequence,
+                        limit
                 ))
                 .orElseGet(ChatHistoryResponse::empty);
+    }
+
+    private ChatHistoryResponse historyPage(
+            AiConversation conversation,
+            Long beforeSequence,
+            int limit
+    ) {
+        long cursor = beforeSequence == null
+                ? Long.MAX_VALUE
+                : beforeSequence;
+        List<AiChatMessage> fetched = messageRepository
+                .findByConversationIdAndSequenceLessThanOrderBySequenceDesc(
+                        conversation.getId(),
+                        cursor,
+                        PageRequest.of(0, limit + 1)
+                );
+        boolean hasMore = fetched.size() > limit;
+        List<AiChatMessage> page = new ArrayList<>(
+                fetched.subList(0, Math.min(limit, fetched.size()))
+        );
+        Long nextCursor = hasMore && !page.isEmpty()
+                ? page.get(page.size() - 1).getSequence()
+                : null;
+        Collections.reverse(page);
+        return new ChatHistoryResponse(
+                conversation.getId(),
+                page.stream()
+                        .map(message -> new ChatHistoryMessageResponse(
+                                message.getId(),
+                                message.getRole(),
+                                message.getContent(),
+                                message.getCreatedAt()
+                        ))
+                        .toList(),
+                nextCursor,
+                hasMore
+        );
     }
 
     @Transactional

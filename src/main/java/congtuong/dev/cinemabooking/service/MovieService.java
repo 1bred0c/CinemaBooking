@@ -5,13 +5,14 @@ import congtuong.dev.cinemabooking.dto.request.MovieUpdateRequest;
 import congtuong.dev.cinemabooking.dto.response.MovieResponse;
 import congtuong.dev.cinemabooking.dto.response.MoviePosterResponse;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
-import java.util.List;
 import java.util.UUID;
 
 public interface MovieService {
-    List<MovieResponse> getMovies();
-    List<MovieResponse> getNowShowingMovies();
+    Page<MovieResponse> getMovies(Pageable pageable);
+    Page<MovieResponse> getNowShowingMovies(Pageable pageable);
     MovieResponse getMovie(UUID id);
     MovieResponse createMovie(MovieCreateRequest request);
     MovieResponse updateMovie(UUID id, MovieUpdateRequest request);

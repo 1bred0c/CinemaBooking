@@ -30,8 +30,12 @@ public class ConversationMemoryService {
         return persistenceService.load(userId);
     }
 
-    public ChatHistoryResponse getHistory(UUID userId) {
-        return persistenceService.getHistory(userId);
+    public ChatHistoryResponse getHistory(
+            UUID userId,
+            Long beforeSequence,
+            int limit
+    ) {
+        return persistenceService.getHistory(userId, beforeSequence, limit);
     }
 
     public void recordSuccessfulExchange(

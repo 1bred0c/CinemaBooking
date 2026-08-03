@@ -20,6 +20,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -170,22 +172,27 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    public List<BookingSummaryResponse> getUserBookings(UUID currentUserId) {
-        return bookingRepository.findAllByUserIdOrderByCreatedAtDesc(currentUserId)
-                .stream()
-                .map(bookingMapper::toSummaryResponse)
-                .toList();
+    public Page<BookingSummaryResponse> getUserBookings(
+            UUID currentUserId,
+            Pageable pageable
+    ) {
+        return bookingRepository.findAllByUserId(
+                currentUserId,
+                pageable
+        ).map(bookingMapper::toSummaryResponse);
     }
 
     @Override
-    public List<MyBookingResponse> getMyBookings(
+    public Page<MyBookingResponse> getMyBookings(
             UUID currentUserId,
-            BookingStatus status
+            BookingStatus status,
+            Pageable pageable
     ) {
-        return bookingRepository.findMyBookings(currentUserId, status)
-                .stream()
-                .map(this::toMyBookingResponse)
-                .toList();
+        return bookingRepository.findMyBookings(
+                currentUserId,
+                status,
+                pageable
+        ).map(this::toMyBookingResponse);
     }
 
     @Override

@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.authentication.LockedException;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
@@ -15,11 +16,15 @@ import java.util.UUID;
 public class CustomUserDetailsService implements UserDetailsService {
 
     private final UserRepository userRepository;
+    private final SecurityStateService securityStateService;
 
     @Override
     public UserDetails loadUserByUsername(String phoneNumber) throws UsernameNotFoundException {
         User user = userRepository.findByPhoneNumber(phoneNumber)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + phoneNumber));
+        if (securityStateService.isTransitioning(user.getId())) {
+            throw new LockedException("Account security information is being updated");
+        }
         return new CustomUserDetails(user);
     }
 

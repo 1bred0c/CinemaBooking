@@ -44,6 +44,10 @@ public class User {
     @Column(name = "is_active", nullable = false)
     private boolean isActive;
 
+    @Builder.Default
+    @Column(name = "security_version", nullable = false, columnDefinition = "bigint default 1")
+    private long securityVersion = 1L;
+
     @Column(name = "create_at", nullable = false)
     private Timestamp createAt;
 
@@ -56,6 +60,9 @@ public class User {
         this.createAt = now;
         this.updateAt = now;
         this.isActive = true;
+        if (this.securityVersion < 1L) {
+            this.securityVersion = 1L;
+        }
     }
 
     @PreUpdate

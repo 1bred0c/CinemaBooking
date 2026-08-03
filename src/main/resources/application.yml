@@ -34,6 +34,13 @@ spring:
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT:2s}
+
   jpa:
     hibernate:
       ddl-auto: update
@@ -120,6 +127,7 @@ security:
     secret: ${JWT_SECRET}
     access-token-expiration: 30m
     refresh-token-expiration: 14d
+    refresh-token-cleanup-interval: ${REFRESH_TOKEN_CLEANUP_INTERVAL:1h}
 
 booking:
   seat-hold-duration-minutes: ${SEAT_HOLD_DURATION_MINUTES:10}

@@ -1,5 +1,8 @@
 package congtuong.dev.cinemabooking.service;
 
-public interface UserService {
+import java.util.UUID;
 
+public interface UserService {
+    void deactivate(UUID userId);
+    void activate(UUID userId);
 }

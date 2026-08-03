@@ -35,6 +35,7 @@ public class JwtServiceImpl implements JwtService {
         return Jwts.builder()
                 .subject(user.getId().toString())
                 .claim("role", user.getRole().name())
+                .claim("sv", user.getSecurityVersion())
                 .id(jti)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiration))
@@ -73,5 +74,14 @@ public class JwtServiceImpl implements JwtService {
     public Role extractRole(String token) {
         String role = parseToken(token).get("role", String.class);
         return Role.valueOf(role);
+    }
+
+    @Override
+    public long extractSecurityVersion(String token) {
+        Number version = parseToken(token).get("sv", Number.class);
+        if (version == null) {
+            throw new IllegalArgumentException("Token has no security version");
+        }
+        return version.longValue();
     }
 }

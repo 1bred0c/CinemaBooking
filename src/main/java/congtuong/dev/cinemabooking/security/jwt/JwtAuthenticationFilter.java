@@ -1,5 +1,7 @@
 package congtuong.dev.cinemabooking.security.jwt;
 
+import congtuong.dev.cinemabooking.entity.User;
+import congtuong.dev.cinemabooking.entity.enums.Role;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -23,7 +25,7 @@ import java.util.UUID;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
-    private final CustomUserDetailsService customUserDetailsService;
+    private final SecurityStateService securityStateService;
 
     @Override
     protected void doFilterInternal(
@@ -45,10 +47,35 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         try {
             Claims claims = jwtService.parseToken(token);
             UUID userId = UUID.fromString(claims.getSubject());
+            if (securityStateService.isTransitioning(userId)) {
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
+            Number securityVersionClaim = claims.get("sv", Number.class);
+            if (securityVersionClaim == null) {
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
+            long tokenSecurityVersion = securityVersionClaim.longValue();
+            SecurityState securityState = securityStateService.get(userId);
+
+            if (!securityState.active()
+                    || securityState.version() != tokenSecurityVersion) {
+                SecurityContextHolder.clearContext();
+                filterChain.doFilter(request, response);
+                return;
+            }
 
             if (SecurityContextHolder.getContext().getAuthentication() == null) {
-                CustomUserDetails userDetails =
-                        customUserDetailsService.getUserById(userId);
+                User user = User.builder()
+                        .id(userId)
+                        .role(Role.valueOf(claims.get("role", String.class)))
+                        .isActive(true)
+                        .securityVersion(tokenSecurityVersion)
+                        .build();
+                CustomUserDetails userDetails = new CustomUserDetails(user);
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(

@@ -19,4 +19,6 @@ public interface JwtService {
     Instant extractExpiration(String token);
 
     Role extractRole(String token);
+
+    long extractSecurityVersion(String token);
 }

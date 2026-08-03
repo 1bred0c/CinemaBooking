@@ -4,6 +4,7 @@ import congtuong.dev.cinemabooking.dto.request.LoginRequest;
 import congtuong.dev.cinemabooking.dto.request.LogoutRequest;
 import congtuong.dev.cinemabooking.dto.request.RefreshTokenRequest;
 import congtuong.dev.cinemabooking.dto.request.RegisterRequest;
+import congtuong.dev.cinemabooking.dto.request.ChangePasswordRequest;
 import congtuong.dev.cinemabooking.dto.response.LoginResponse;
 import congtuong.dev.cinemabooking.dto.response.RefreshTokenResponse;
 import congtuong.dev.cinemabooking.dto.response.UserRespone;
@@ -57,6 +58,15 @@ public class AuthController {
         return ResponseEntity.ok(authService.getMyProfile(
                 currentUser.getUser().getId()
         ));
+    }
+
+    @PatchMapping("/change-password")
+    public ResponseEntity<Void> changePassword(
+            @AuthenticationPrincipal CustomUserDetails currentUser,
+            @Valid @RequestBody ChangePasswordRequest request
+    ) {
+        authService.changePassword(currentUser.getUser().getId(), request);
+        return ResponseEntity.noContent().build();
     }
 
 }

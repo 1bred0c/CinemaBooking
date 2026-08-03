@@ -1,6 +1,7 @@
 package congtuong.dev.cinemabooking.security.jwt;
 
 import congtuong.dev.cinemabooking.dto.request.RegisterRequest;
+import congtuong.dev.cinemabooking.dto.request.ChangePasswordRequest;
 import congtuong.dev.cinemabooking.entity.User;
 import congtuong.dev.cinemabooking.messaging.event.UserRegisteredEvent;
 import congtuong.dev.cinemabooking.repository.UserRepository;
@@ -13,6 +14,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.LocalDate;
 import java.sql.Timestamp;
@@ -24,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.never;
 
 @ExtendWith(MockitoExtension.class)
 class AuthServiceImplTest {
@@ -40,6 +44,8 @@ class AuthServiceImplTest {
     private RefreshTokenService refreshTokenService;
     @Mock
     private OutboxEventService outboxEventService;
+    @Mock
+    private SecurityStateService securityStateService;
 
     @InjectMocks
     private AuthServiceImpl authService;
@@ -107,5 +113,48 @@ class AuthServiceImplTest {
         assertThat(response.active()).isTrue();
         assertThat(response.createdAt()).isEqualTo(createdAt);
         assertThat(response.updatedAt()).isEqualTo(updatedAt);
+    }
+
+    @Test
+    void changePasswordAdvancesVersionRevokesSessionsAndPublishesAfterCommit() {
+        UUID userId = UUID.randomUUID();
+        User user = User.builder()
+                .id(userId)
+                .password("old-hash")
+                .role(congtuong.dev.cinemabooking.entity.enums.Role.CUSTOMER)
+                .isActive(true)
+                .securityVersion(4L)
+                .build();
+        when(securityStateService.beginTransition(userId)).thenReturn("operation-1");
+        when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(user));
+        when(passwordEncoder.matches("old-password", "old-hash")).thenReturn(true);
+        when(passwordEncoder.matches("new-password", "old-hash")).thenReturn(false);
+        when(passwordEncoder.encode("new-password")).thenReturn("new-hash");
+        TransactionSynchronizationManager.initSynchronization();
+        try {
+            authService.changePassword(
+                    userId,
+                    new ChangePasswordRequest("old-password", "new-password")
+            );
+
+            assertThat(user.getPassword()).isEqualTo("new-hash");
+            assertThat(user.getSecurityVersion()).isEqualTo(5L);
+            verify(refreshTokenService).revokeAllForUser(userId);
+            verify(securityStateService, never()).completeTransition(
+                    any(), any(), any()
+            );
+
+            TransactionSynchronization synchronization =
+                    TransactionSynchronizationManager.getSynchronizations().get(0);
+            synchronization.afterCommit();
+
+            verify(securityStateService).completeTransition(
+                    userId,
+                    "operation-1",
+                    new SecurityState(true, 5L)
+            );
+        } finally {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
     }
 }

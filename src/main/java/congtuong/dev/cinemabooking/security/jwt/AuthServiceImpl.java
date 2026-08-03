@@ -4,6 +4,7 @@ import congtuong.dev.cinemabooking.dto.request.LoginRequest;
 import congtuong.dev.cinemabooking.dto.request.LogoutRequest;
 import congtuong.dev.cinemabooking.dto.request.RefreshTokenRequest;
 import congtuong.dev.cinemabooking.dto.request.RegisterRequest;
+import congtuong.dev.cinemabooking.dto.request.ChangePasswordRequest;
 import congtuong.dev.cinemabooking.dto.response.LoginResponse;
 import congtuong.dev.cinemabooking.dto.response.RefreshTokenResponse;
 import congtuong.dev.cinemabooking.dto.response.UserRespone;
@@ -13,6 +14,7 @@ import congtuong.dev.cinemabooking.entity.enums.Role;
 import congtuong.dev.cinemabooking.entity.User;
 import congtuong.dev.cinemabooking.exception.UserAlreadyExistException;
 import congtuong.dev.cinemabooking.exception.UserNotFoundException;
+import congtuong.dev.cinemabooking.exception.UserSecurityException;
 import congtuong.dev.cinemabooking.messaging.event.UserRegisteredEvent;
 import congtuong.dev.cinemabooking.repository.UserRepository;
 import congtuong.dev.cinemabooking.service.OutboxEventService;
@@ -24,6 +26,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import org.springframework.http.HttpStatus;
 
 import java.util.Locale;
 import java.util.UUID;
@@ -38,6 +43,7 @@ public class AuthServiceImpl implements AuthService {
     private final AuthenticationManager authenticationManager;
     private final RefreshTokenService refreshTokenService;
     private final OutboxEventService outboxEventService;
+    private final SecurityStateService securityStateService;
 
     @Override
     @Transactional
@@ -122,6 +128,86 @@ public class AuthServiceImpl implements AuthService {
                 user.isActive(),
                 user.getCreateAt().toLocalDateTime(),
                 user.getUpdateAt().toLocalDateTime()
+        );
+    }
+
+    @Override
+    @Transactional
+    public void changePassword(
+            UUID currentUserId,
+            ChangePasswordRequest request
+    ) {
+        String operationId;
+        try {
+            operationId = securityStateService.beginTransition(currentUserId);
+        } catch (IllegalStateException exception) {
+            throw new UserSecurityException(
+                    HttpStatus.CONFLICT,
+                    "Account security information is already being updated"
+            );
+        } catch (RuntimeException exception) {
+            throw new UserSecurityException(
+                    HttpStatus.SERVICE_UNAVAILABLE,
+                    "Security service is temporarily unavailable"
+            );
+        }
+
+        boolean completionRegistered = false;
+        try {
+            User user = userRepository.findByIdForUpdate(currentUserId)
+                    .orElseThrow(() -> new UserNotFoundException("User not found"));
+            if (!user.isActive()) {
+                throw new UserSecurityException(HttpStatus.FORBIDDEN, "User account is inactive");
+            }
+            if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
+                throw new UserSecurityException(HttpStatus.BAD_REQUEST, "Current password is incorrect");
+            }
+            if (passwordEncoder.matches(request.newPassword(), user.getPassword())) {
+                throw new UserSecurityException(
+                        HttpStatus.BAD_REQUEST,
+                        "New password must be different from the current password"
+                );
+            }
+
+            user.setPassword(passwordEncoder.encode(request.newPassword()));
+            user.setSecurityVersion(user.getSecurityVersion() + 1L);
+            refreshTokenService.revokeAllForUser(currentUserId);
+            registerTransitionCompletion(
+                    currentUserId,
+                    operationId,
+                    new SecurityState(user.isActive(), user.getSecurityVersion())
+            );
+            completionRegistered = true;
+        } finally {
+            if (!completionRegistered) {
+                securityStateService.cancelTransition(currentUserId, operationId);
+            }
+        }
+    }
+
+    private void registerTransitionCompletion(
+            UUID userId,
+            String operationId,
+            SecurityState committedState
+    ) {
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        securityStateService.completeTransition(
+                                userId,
+                                operationId,
+                                committedState
+                        );
+                    }
+
+                    @Override
+                    public void afterCompletion(int status) {
+                        if (status != STATUS_COMMITTED) {
+                            securityStateService.cancelTransition(userId, operationId);
+                        }
+                    }
+                }
         );
     }
 }

@@ -7,11 +7,9 @@ import congtuong.dev.cinemabooking.repository.RefreshTokenRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import redis.clients.authentication.core.TokenRequestException;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.sql.Timestamp;
 import java.time.Instant;
-import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Service
@@ -21,6 +19,7 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
     private final RefreshTokenRepository refreshTokenRepository;
     private final JwtProperties jwtProperties;
     private final TokenHashService tokenHashService;
+    private final SecurityStateService securityStateService;
 
     @Override
     public String generateRefreshToken(User user) {
@@ -51,14 +50,23 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
             throw new TokenRequestInvalidException("Refresh token is revoked");
         }
 
-        if (token.getExpiration().isBefore(Instant.now())) {
+        if (!token.getExpiration().isAfter(Instant.now())) {
             throw new TokenRequestInvalidException("Refresh token is expired");
+        }
+
+        if (!token.getUser().isActive()) {
+            throw new TokenRequestInvalidException("User account is inactive");
+        }
+
+        if (securityStateService.isTransitioning(token.getUser().getId())) {
+            throw new TokenRequestInvalidException("Account security information is being updated");
         }
 
         return token;
     }
 
     @Override
+    @Transactional
     public void revokeRefreshToken(String refreshToken) {
         String hashToken = tokenHashService.hash(refreshToken);
         RefreshToken token = refreshTokenRepository
@@ -70,6 +78,17 @@ public class RefreshTokenServiceImpl implements RefreshTokenService {
             throw new TokenRequestInvalidException("Token is revoked");
         }
         token.setRevoked(true);
-        refreshTokenRepository.save(token);
+    }
+
+    @Override
+    @Transactional
+    public void revokeAllForUser(UUID userId) {
+        refreshTokenRepository.revokeAllByUserId(userId);
+    }
+
+    @Override
+    @Transactional
+    public int deleteExpiredAndRevokedTokens() {
+        return refreshTokenRepository.deleteRevokedOrExpired(Instant.now());
     }
 }

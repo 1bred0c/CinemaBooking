@@ -100,6 +100,16 @@ public class SecurityConfig {
                         ).hasRole("ADMIN")
 
                         .requestMatchers(
+                                HttpMethod.DELETE,
+                                "/api/v1/users/**"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
+                                HttpMethod.PATCH,
+                                "/api/v1/users/**"
+                        ).hasRole("ADMIN")
+
+                        .requestMatchers(
                                 HttpMethod.PATCH,
                                 "/api/v1/movies/**",
                                 "/api/v1/genres/**",

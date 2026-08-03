@@ -1,4 +1,13 @@
 services:
+  redis:
+    image: redis:7.4-alpine
+    container_name: cinema-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+
   kafka:
     image: apache/kafka:4.1.0
     container_name: cinema-kafka
@@ -15,3 +24,6 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+
+volumes:
+  redis-data:
